@@ -1,6 +1,6 @@
 # DrugResistanceReview2024
 
-This is the README file accompanying the publication "Exceptions to the rule: When does resistance evolution not undermine antibiotic therapy in human bacterial infections?" by Bhattacharya et al. 
+This is the README file accompanying the publication "Exceptions to the rule: When does resistance evolution not undermine antibiotic therapy in human bacterial infections?" by Bhattacharya, Aluquin, & Kennedy. 
 
 Files include the R code and raw data needed to reproduce the figures and analyses contained in the manuscript.  
 
