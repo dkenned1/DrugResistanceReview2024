@@ -1,0 +1,567 @@
+---
+title: "AlgorithmicReview_Nov2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "Amrita's Code - Algorithmic review method"
+author: "Zoe Dinges"
+date: "6/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r read data, library and themes}
+rm(list=ls())
+data <- read.csv("Masterfile_v8.csv")
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=16,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=16,face="bold", vjust = 1), 
+  axis.text.x = element_text(face="bold", size=10), 
+  axis.text.y = element_text(face="bold", size=12), 
+  plot.title = element_text(face = "bold", size = 24, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+
+data$ResearchEffortPath = log10(data$ResearchEffortPath)
+data$ResearchEffortAntibiotic = log10(data$ResearchEffortAntibiotic)
+data$DrugUseTotal = log10(data$DrugUseTotal)
+data$Resistant = data$Resistant + ceiling(0.01*(data$Resistant+data$NotResistant))
+data$NotResistant = data$NotResistant + ceiling(0.01*(data$Resistant+data$NotResistant))
+#add ceiling of 1% (resistant + not resistant)
+#data$ResearchEffortDrug = log10(data$ResearchEffortDrug)
+
+
+head (data)
+str(data)
+```
+
+```{r Checking Expert adn ARM data}
+
+#Check pathogen traits and drug traits for length to find mismatches
+nrow(data.frame(c(unique(data[c("PathogenName")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Nosocomial")]))))==nrow(data.frame(c(unique(data[c("PathogenName")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "NaturallyCompetent")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Zoonosis")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "TransmissionType")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Humantransmission")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "ResearchEffortPath")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "EnvrionmentalReservoir")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Commensal")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Pathogentype")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "Conjugation")]))))
+
+
+#dfNosocomial = data.frame(c(unique(data[c("PathogenName", "Nosocomial")]))) #making new dataframe with unique combinations or pathogen and human transmission from ARM data
+#dfCommensal = data.frame(c(unique(data[c("PathogenName", "Commensal")])))
+#dfHumanTransmission$PathogenName[dfHumanTransmission$Humantransmission == "1"] #select pathogen names for those with Human transmission = 1
+
+
+nrow(data.frame(c(unique(data[c("Antibiotic")]))))
+nrow(data.frame(c(unique(data[c("Antibiotic", "ResearchEffortAntibiotic")]))))
+nrow(data.frame(c(unique(data[c("Antibiotic", "AntibioticDate")]))))
+nrow(data.frame(c(unique(data[c("Antibiotic", "Bactericidal.Static")]))))
+nrow(data.frame(c(unique(data[c("Antibiotic", "DrugUseTotal")]))))
+
+
+#dfCidal = data.frame(c(unique(data[c("Antibiotic", "Bactericidal.Static")]))) #making new dataframe with unique combinations or pathogen and human transmission from ARM data
+#dfCidal
+
+```
+
+
+```{r Raw plots}
+library (lme4)
+#install.packages ("lmtest")
+m0 <- glmer(cbind(Resistant, NotResistant) ~ 1 + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m0)
+library (lmtest)
+
+
+m1 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Nosocomial + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m1)
+
+m2 <- glmer(cbind(Resistant, NotResistant) ~ 1 + NaturallyCompetent + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m2)
+
+m3 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Zoonosis + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m3)
+
+m4 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Humantransmission + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m4)
+
+m5 <- glmer(cbind(Resistant, NotResistant) ~ 1 + TransmissionType + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m5)
+
+m6 <- glmer(cbind(Resistant, NotResistant) ~ 1 + ResearchEffortAntibiotic + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m6)
+
+m7 <- glmer(cbind(Resistant, NotResistant) ~ 1 + ResearchEffortPath + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m7)
+
+m8 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Commensal + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m8)
+
+m9 <- glmer(cbind(Resistant, NotResistant) ~ 1 + AntibioticDate + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m9)
+
+m10 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Bactericidal.Static + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m10)
+
+m11 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Pathogentype + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m11)
+
+m12 <- glmer(cbind(Resistant, NotResistant) ~ 1 + EnvrionmentalReservoir + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m12)
+
+m13 <- glmer(cbind(Resistant, NotResistant) ~ 1 + DrugUseTotal + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m13)
+
+m14 <- glmer(cbind(Resistant, NotResistant) ~ 1 + Conjugation + (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass), family = binomial, data= data)
+summary(m14)
+
+
+lrtest(m0,m1)
+lrtest(m0,m2)
+lrtest(m0,m3)
+lrtest(m0,m4)
+lrtest(m0,m5)
+lrtest(m0,m6)
+lrtest(m0,m7)
+lrtest(m0,m8)
+lrtest(m0,m9)
+lrtest(m0,m10)
+lrtest(m0,m11)
+lrtest(m0,m12)
+lrtest(m0,m13)
+lrtest(m0,m14)
+
+#pdf("Nosocomial_11.16.pdf") # starts writing a PDF to file
+plot (jitter(data$Nosocomial), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Nosocomial, p= 0.01") #log = 'y',
+#dev.off()                                                                                                                                                                                                                                                                                                                                                                                                     
+plot (jitter(data$NaturallyCompetent), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Naturally Competent, p= 0.641")
+plot (jitter(data$Zoonosis), jitter(data$Resistant/(data$Resistant+data$NotResistant)),  main = "Zoonosis , p= 0.86")
+plot (jitter(data$Humantransmission), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Humantransmission, p= 0.09")
+plot (jitter(data$TransmissionType), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Transmission Type, p= 0.10")
+plot (jitter(data$ResearchEffortPath), jitter(data$Resistant/(data$Resistant+data$NotResistant)),main = "Research Effort Antibiotic, p= 0.97")
+plot (jitter(data$ResearchEffortAntibiotic), jitter(data$Resistant/(data$Resistant+data$NotResistant)),main = "Research Effort Pathogen, p= 0.62")
+plot (jitter(data$Commensal), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Commensal, p= 0.57")
+plot (jitter(data$AntibioticDate), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Antibiotic Date, p= .43")
+plot (data$Bactericidal.Static, jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Bactericidal/Static, p= 0.84")
+plot (data$Pathogentype, jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Pathogen Type, GramPos p = 0.24")
+plot (jitter(data$EnvrionmentalReservoir), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Environmental Reservoir, p= 0.55")
+plot (jitter(data$DrugUseTotal), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Drug Use, p= 0.25")
+plot (jitter(data$Conjugation), jitter(data$Resistant/(data$Resistant+data$NotResistant)), main = "Conjugation, p= 0.48")
+
+
+```
+```{r Model structure}
+
+Variables=c("Nosocomial", "Commensal", "Zoonosis", "Humantransmission", "NaturallyCompetent", "Bactericidal.Static", "Pathogentype", "TransmissionType", "ResearchEffortPath", "AntibioticDate","ResearchEffortAntibiotic","EnvrionmentalReservoir", "DrugUseTotal", "Conjugation")
+
+ModelStructures=expand.grid(c(0,1), c(0,1), c(0,1),c(0,1), c(0,1), c(0,1),c(0,1), c(0,1), c(0,1), c(0,1), c(0,1), c(0,1), c(0,1), c(0,1)) #Write this out by hand, 1 per category of parameter
+#ModelStructures
+```
+```{r Building all models}
+all.mods=list()
+
+for (i in 1:nrow(ModelStructures))
+{
+  all.mods[[i]]="cbind(Resistant, NotResistant) ~1 + "
+}
+
+
+############################ Adding parameters #####################################
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,1]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Nosocomial + ")
+  }
+}
+
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,2]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Commensal + ")
+  }
+}
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,3]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Zoonosis + ")
+  }
+}
+#***********************************************************************************
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,4]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Humantransmission + ")
+  }
+}
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,5]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "NaturallyCompetent + ")
+  }
+}
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,6]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Bactericidal.Static + ")
+  }
+}
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,7]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Pathogentype + ")
+  }
+}
+
+#***********************************************************************************
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,8]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "TransmissionType + ")
+  }
+}
+
+#***********************************************************************************
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,9]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "ResearchEffortPath + ")
+  }
+}
+
+#***********************************************************************************
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,10]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "AntibioticDate + ")
+  }
+}
+
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,11]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "ResearchEffortAntibiotic + ")
+  }
+}
+
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,12]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "EnvrionmentalReservoir + ")
+  }
+}
+
+#***********************************************************************************
+
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,13]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "DrugUseTotal + ")
+  }
+}
+
+#***********************************************************************************
+for (i in 1: nrow(ModelStructures))
+{
+  if (ModelStructures[i,14]==1)
+  {
+    all.mods[[i]]=c(all.mods[[i]], "Conjugation + ")
+  }
+}
+
+#***********************************************************************************
+
+##adding Random effects ####
+
+for (i in 1:nrow(ModelStructures))
+{
+  all.mods[[i]]=c(all.mods[[i]], " (1|PathogenName)+ (1|Antibiotic) + (1|DrugClass) ")
+}
+
+#Creating model as formula and visualising all models
+all.mods <- lapply(all.mods, as.formula)
+#all.mods
+
+```
+```{r AIC, DAIC, Model selection}
+library(lme4)
+
+all.glmer <- lapply(all.mods, glmer, family = binomial, nAGQ = 0, data, control=glmerControl(optimizer="bobyqa",
+                            optCtrl=list(maxfun=2e5))) #(link = "probit") 
+AICScore <-sapply(all.glmer, extractAIC)[2,]
+#AICScore
+
+DAIC <- AICScore - min(AICScore) #delta AIC
+#DAIC
+
+which.min(DAIC) #which model has lowes AIC
+Topmodels<- (which(DAIC < 0.21)) #all models within 0.75 AIC of best model
+all.mods[Topmodels]
+DAIC[Topmodels]
+```
+```{r AIC weights of Factors}
+#Calculating AIC weights of each factor t determine the probability that a given factor 
+
+numNosocomial <- sum(exp(-DAIC[which(ModelStructures[,1] == 1)]/2))
+numCommensal <- sum(exp(-DAIC[which(ModelStructures[,2] == 1)]/2))
+numZoonosis <- sum(exp(-DAIC[which(ModelStructures[,3] == 1)]/2))
+numHumantransmission <- sum(exp(-DAIC[which(ModelStructures[,4] == 1)]/2))
+numCompetence <- sum(exp(-DAIC[which(ModelStructures[,5] == 1)]/2))
+numCidalStatic <- sum(exp(-DAIC[which(ModelStructures[,6] == 1)]/2))
+numPathogentype <- sum(exp(-DAIC[which(ModelStructures[,7] == 1)]/2))
+numTransmissionType <- sum(exp(-DAIC[which(ModelStructures[,8] == 1)]/2))
+numResearchEffortPath <- sum(exp(-DAIC[which(ModelStructures[,9] == 1)]/2))
+numAntibioticDate <- sum(exp(-DAIC[which(ModelStructures[,10] == 1)]/2))
+numResearchEffortAntibiotic <- sum(exp(-DAIC[which(ModelStructures[,11] == 1)]/2))
+numEnvironmentalReservoir <- sum(exp(-DAIC[which(ModelStructures[,12] == 1)]/2))
+numDrugUseTotal <- sum(exp(-DAIC[which(ModelStructures[,13] == 1)]/2))
+numConjugation <- sum(exp(-DAIC[which(ModelStructures[,14] == 1)]/2))
+
+#numCommensalNoso <- sum(exp(-DAIC[which((ModelStructures[,2] == 1)|(ModelStructures[,1] == 1))]   /2))
+
+denominator <- sum(exp(-DAIC/2))
+
+
+df.FactorAIC <- data.frame("Factors" = c("-TransmissionType","-Nosocomial","-Pathogentype","-Humantransmission","+DrugUseTotal",    "+ResearchEffortPath","+AntibioticDate", "+EnvrionmentalReservoir","+Commensal","+Conjugation","+Bactericidal.Static","+NaturallyCompetent", "+Zoonosis","+ResearchEffortAntibiotic" ),  "AICweights" = c(
+numTransmissionType /denominator,
+numNosocomial/denominator,
+numPathogentype /denominator,
+numHumantransmission /denominator,
+numDrugUseTotal/denominator,
+numResearchEffortPath/denominator,
+numAntibioticDate/denominator,
+numEnvironmentalReservoir/denominator,
+numCommensal/denominator,
+numConjugation/denominator,
+numCidalStatic /denominator,
+numCompetence/denominator,
+numZoonosis/denominator,
+numResearchEffortAntibiotic/denominator
+))
+
+df.FactorAIC
+
+
+df.FactorAIC$Factors <- factor(df.FactorAIC$Factors, levels = df.FactorAIC$Factors)
+
+  
+
+
+
+```
+```{r Factor-wise DAIC from Best Model}
+library (lme4)
+bestMod <- glmer(cbind(Resistant, NotResistant) ~ 1 + Nosocomial + Humantransmission + 
+    Pathogentype + TransmissionType + (1 | PathogenName) + (1 | 
+    Antibiotic) + (1 | DrugClass), family = binomial,nAGQ = 0, data = data)
+summary(bestMod)
+AIC(bestMod)
+
+ModNosocomial <- update(bestMod, ~ . - Nosocomial)
+DAICNosocomial = AIC(ModNosocomial) - AIC(bestMod)
+
+ModZoonosis <- update(bestMod, ~ . + Zoonosis)
+DAICZoonosis = AIC(ModZoonosis) - AIC(bestMod)
+
+ModHumanTr <- update(bestMod, ~ . - Humantransmission)
+DAICHumanTr = AIC(ModHumanTr) - AIC(bestMod)
+
+ModNatComp <- update(bestMod, ~ . + NaturallyCompetent)
+DAICNatComp = AIC(ModNatComp) - AIC(bestMod)
+
+ModTrType <- update(bestMod, ~ . - TransmissionType)
+DAICTrType = AIC(ModTrType) - AIC(bestMod)
+
+ModREDrug <- update(bestMod, ~ . + ResearchEffortAntibiotic)
+DAICREDrug = AIC(ModREDrug) - AIC(bestMod)
+
+ModREPath <- update(bestMod, ~ . + ResearchEffortPath)
+DAICREPath = AIC(ModREPath) - AIC(bestMod)
+
+ModDrugDt <- update(bestMod, ~ . + AntibioticDate)
+DAICDrugDt = AIC(ModDrugDt) - AIC(bestMod)
+
+ModCidal <- update(bestMod, ~ . + Bactericidal.Static)
+DAICCidal = AIC(ModCidal) - AIC(bestMod)
+
+ModEnvRes <- update(bestMod, ~ . + EnvrionmentalReservoir)
+DAICEnvRes = AIC(ModEnvRes) - AIC(bestMod)
+
+ModCommensal <- update(bestMod, ~ . + Commensal)
+DAICCommensal = AIC(ModCommensal) - AIC(bestMod)
+
+ModPathogenType <- update(bestMod, ~ . - Pathogentype)
+DAICPathType = AIC(ModPathogenType) - AIC(bestMod)
+
+ModDrugUseTotal<- update(bestMod, ~ . + DrugUseTotal)
+DAICDrugUseTotal = AIC(ModDrugUseTotal) - AIC(bestMod)
+
+ModConjugation<- update(bestMod, ~ . + Conjugation)
+DAICConjugation = AIC(ModConjugation) - AIC(bestMod)
+
+nullModRandom <- lmer(ResistanceScore ~ 1 + (1|PathogenName) + (1|DrugClass), data = data, REML = FALSE)
+DAICnullModRandom = AIC(nullModRandom) - AIC(bestMod)
+
+nullMod <- lm(ResistanceScore ~ 1, data = data)
+DAICnullMod = AIC(nullMod) - AIC(bestMod)
+
+####Create dataframe with DAIC values#####
+
+df2 <- data.frame("Factors" = c("-TransmissionType","-Nosocomial","-Pathogentype","-Humantransmission","+DrugUseTotal",    "+ResearchEffortPath","+AntibioticDate", "+EnvrionmentalReservoir","+Commensal","+Conjugation","+Bactericidal.Static","+NaturallyCompetent", "+Zoonosis","+ResearchEffortAntibiotic"),
+                      "DeltaAIC"= c(DAICTrType, DAICNosocomial, DAICPathType, DAICHumanTr, DAICDrugUseTotal, DAICREPath,  DAICDrugDt, DAICEnvRes, DAICConjugation,DAICCommensal,  DAICCidal, DAICNatComp, DAICZoonosis,DAICREDrug ))
+df2
+df2$Factors <- factor(df2$Factors, levels = df2$Factors)
+
+
+
+
+```
+
+
+```{r Bootstrapped}
+
+
+bootstrap <- read.csv("ARMBootstrapped_1000_Final.csv")
+colnames(bootstrap)=c("Seed", "Nosocomial", "Commensal", "Zoonosis", "Humantransmission", "NaturallyCompetent", "Bactericidal.Static", "Pathogentype", "TransmissionType", "ResearchEffortPath", "AntibioticDate","ResearchEffortAntibiotic","EnvrionmentalReservoir", "DrugUseTotal","Conjugation")
+head(bootstrap)
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+
+
+library(tidyr) #Needed for gather function
+library(dplyr) #Needed for piping (%>%)
+
+gatherbootstrap <- bootstrap %>% gather(Factor, Bootstrap, -Seed)
+
+#Two ways to do the plot: summarySE, or through ggplot stat_summary
+
+
+#First, using summarySE function
+library(Rmisc) #Needed for summarySE function
+
+summarybootstrap <- summarySE(gatherbootstrap, measurevar="Bootstrap", groupvars="Factor", na.rm=TRUE)
+summarybootstrap <- as.data.frame(summarybootstrap)
+library(forcats)
+summarybootstrap <- summarybootstrap %>% mutate(Factor = fct_reorder(Factor, Bootstrap, na.rm = TRUE, .desc = TRUE)) ## rearranges in descending order of values
+
+
+View(summarybootstrap)#Get a look at the summarized stats
+
+
+```
+
+```{r Figures }
+
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+library(dplyr)
+library(forcats)
+#df <- df %>% mutate(Factors = fct_reorder(Factors, DeltaAIC, na.rm = TRUE, .desc = TRUE))
+
+
+
+#figure2 <- 
+  ggplot(df2, aes(Factors, y = value)) + 
+     geom_point(aes(y = DeltaAIC, col = "DeltaAIC")) + 
+     geom_point(aes(y = AICweights*20, col = "AIC weights of Factors"))+
+    scale_y_continuous(
+    "DeltaAIC", 
+    sec.axis = sec_axis(~ . /20, name = "AICweights"))+
+     curtstheme +
+     theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+#ggsave(filename = "1.8.2021FigureType2_ARM.pdf", plot = figure2, device = "pdf")
+
+
+
+plot1 <- ggplot(df2, aes(x = Factors, y = DeltaAIC, main = "Deviation from Best Model")) + geom_point() +
+   ylim(0,20) +
+  curtstheme +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+summarybootstrap$Factor <- factor(summarybootstrap$Factor , levels =c("TransmissionType","Nosocomial","Pathogentype","Humantransmission","DrugUseTotal","ResearchEffortPath","AntibioticDate", "EnvrionmentalReservoir","Commensal","Conjugation","Bactericidal.Static","NaturallyCompetent", "Zoonosis","ResearchEffortAntibiotic"))
+ 
+plot2 <- ggplot(summarybootstrap, aes(x=Factor, y=Bootstrap)) + labs(y= "Bootstrapped AIC Weights" ) + ylim(0,1) + geom_point() + geom_errorbar(aes(ymin=Bootstrap-ci, ymax=Bootstrap+ci), size = 0.2)+ geom_hline(yintercept = 0.50, linetype="dashed", size = 0.2, color = "grey") + 
+  curtstheme+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+
+library(gridExtra)
+figure1 <- grid.arrange (plot1, plot2, ncol=2)
+ggsave(filename = "6.7.2021FigureType1_ARM.pdf", plot = figure1, device = "pdf", width = 9, height = 5)
+
+```

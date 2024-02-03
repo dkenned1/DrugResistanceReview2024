@@ -1,0 +1,1831 @@
+4---
+title: "Figure1"
+author: "Amrita Bhattacharya"
+date: "7/15/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r ARM read data}
+rm(list=ls())
+data <- read.csv("Masterfile_v8.csv")
+
+summary(data)
+
+data$ResearchEffortPath = log10(data$ResearchEffortPath)
+data$ResearchEffortAntibiotic = log10(data$ResearchEffortAntibiotic)
+data$DrugUseTotal = log10(data$DrugUseTotal)
+data$Resistant = data$Resistant + ceiling(0.01*(data$Resistant+data$NotResistant))
+data$NotResistant = data$NotResistant + ceiling(0.01*(data$Resistant+data$NotResistant))
+#add ceiling of 1% (resistant + not resistant)
+#data$ResearchEffortDrug = log10(data$ResearchEffortDrug)
+data$ResistantPercent = (data$Resistant/(data$Resistant+data$NotResistant))*100
+
+
+nrow(data.frame(c(unique(data[c("PathogenName")]))))
+nrow(data.frame(c(unique(data[c("PathogenName", "DrugClass")]))))
+
+#head (data)
+#str(data)
+```
+```{r Plot Antibiotic and PathogenName ARM}
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+library(forcats)
+library(dplyr)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=16,face = "bold", vjust = 1), 
+  axis.title.y = element_text(size=16,face = "bold", vjust = 1), 
+  axis.text.x = element_text( size=12), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 30, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+data <- data %>% mutate(Antibiotic = fct_reorder(Antibiotic, ResistantPercent, .fun = mean, na.rm = TRUE))
+
+
+
+Antibiotic <-
+ggplot(data, aes(x = Antibiotic, y = ResistantPercent))+ ylab("")+ylim(0,100)+
+  stat_summary(fun = mean, geom = "point", na.rm = TRUE) +
+  stat_summary(geom = "errorbar", fun.data = mean_se, na.rm = TRUE)+ 
+  curtstheme + theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+#+
+  #theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 8)) 
+
+
+
+n_of_studies <- dplyr::count(data, PathogenName)  ##This creates a dataframe of the number of occurances for each PathogenName
+PathogenName_cutoff <- n_of_studies %>% filter(n > 1)  ## This filters out PathogenName with fewer than 2 occurances
+PathogenName_List <- as.character(PathogenName_cutoff$PathogenName)  ## This is necessary to create a list to filter the original dataset
+multiplestudies <- data %>% filter(PathogenName %in% c(PathogenName_List))  ## This says filter the original dataset to only the PathogenName we choose
+
+data <- data %>% mutate(PathogenName = fct_reorder(PathogenName, ResistantPercent, .fun = median, na.rm = TRUE))
+Pathogens1 <-
+  ggplot(data, aes(x = PathogenName, y = ResistantPercent)) + ylab("Percent Resistance") + xlab("Pathogen Name")+ ylim(0,100) +
+  stat_summary(fun = median, geom = "point", na.rm = TRUE) +
+  stat_summary(data = multiplestudies, geom = "errorbar",fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) })+ 
+  curtstheme+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+
+
+ #+
+  #theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 10))
+   
+  
+ ## Pre-November code 
+#ggplot(data, aes(x = PathogenName, y = ResistantPercent)) + ylab("Percent Resistance") + xlab("Pathogen Name")+ ylim(0,100) +
+ # stat_summary(fun = median, geom = "point", na.rm = TRUE) +
+  #stat_summary(geom = "errorbar",fun.min = function(z) { quantile(z,0.025) },fun.max = function(z) { quantile(z,0.975) })+ 
+  #curtstheme +
+  #theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 8))
+
+
+  library(cowplot)
+  
+  figureARM <- plot_grid(Pathogens1, Antibiotic, ncol = 2, align="h",labels = c('C', 'D'))
+  title <- ggdraw() + 
+  draw_label(
+    "Algorithmic Review Method",
+    fontface = 'bold',
+    x = 0.4,
+    hjust = 0
+  )
+  
+  figureARM1 <- plot_grid(
+  title, figureARM,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+ 
+figureARM1  
+```
+```{r EOM read data}
+
+data2 <- read.csv("Datav11_Apr19.2021.data.csv")
+library (dplyr)
+head(data2)
+
+data2$ResearchEffortPath = log10(data2$ResearchEffortPath)
+data2$ResearchEffortDrug = log10(data2$ResearchEffortDrug)
+data2$DrugUseTotal = log10(data2$DrugUseTotal)
+#colnames(data2[33])
+head(data2)
+#str(data2)
+
+```
+```{r Plot EOM}
+data2 <- data2 %>% mutate(DrugClass = fct_reorder(DrugClass, ResistanceScore, .fun = mean, na.rm = TRUE))
+DrugClass <-
+ggplot(data2, aes(x = DrugClass, y = ResistanceScore)) + ylab("") + ylim(0,2)+
+  stat_summary(fun = mean, geom = "point", na.rm = TRUE) +
+  stat_summary(geom = "errorbar", fun.data = mean_se, na.rm = TRUE) + 
+  curtstheme +theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+  #theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 7))
+
+data2 <- data2 %>% mutate(PathogenName = fct_reorder(PathogenName, ResistanceScore, .fun = mean, na.rm = TRUE))
+Pathogen <-
+ggplot(data2, aes(x = PathogenName, y = ResistanceScore)) + ylab("Resistance Score") + xlab("Pathogen Name")+ ylim(0,2) + stat_summary(fun = mean, geom = "point", na.rm = TRUE) +
+  stat_summary(geom = "errorbar", fun.data = mean_se, na.rm = TRUE) + 
+  curtstheme +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))
+  #theme(axis.text.x = element_text(angle = 60, hjust = 1, size = 7))
+
+ library(cowplot)
+  figureEOM <- plot_grid(Pathogen, DrugClass, ncol = 2, align="h",labels = c('A', 'B'))
+  title <- ggdraw() + 
+  draw_label(
+    "Expert Opinion Method",
+    fontface = 'bold',
+    x = 0.4,
+    hjust = 0
+  )
+
+  figureEOM1 <- plot_grid(
+  title, figureEOM,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+  
+```
+```{r Plot Combined Figure 2}
+#figure <- plot_grid(figureEOM , figureARM, nrow = 2)
+figure2 <- plot_grid(figureEOM1 , figureARM1, nrow = 2)
+figure2
+#ggsave(filename = "07.16.2023FIGURE2_a.pdf", plot = figure2, device = "pdf", width = 20, height = 20)
+
+```
+############ FIGURE 2 - 12.3.21  #############
+```{r Figure2 libraries}
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+library(forcats)
+library(dplyr)
+library (RColorBrewer)
+library(cowplot)
+```
+```{r Figure 2 - DataOrganisation}
+#### Read both datasets ####
+### ARM ###
+rm(list=ls())
+
+data <- read.csv("Masterfile_v8.csv")
+data$ResearchEffortPath = log10(data$ResearchEffortPath)
+data$ResearchEffortAntibiotic = log10(data$ResearchEffortAntibiotic)
+data$DrugUseTotal = log10(data$DrugUseTotal)
+data$Resistant = data$Resistant + ceiling(0.01*(data$Resistant+data$NotResistant))
+data$NotResistant = data$NotResistant + ceiling(0.01*(data$Resistant+data$NotResistant))#add ceiling of 1% (resistant + not resistant)
+data$ResistantPercent = (data$Resistant/(data$Resistant+data$NotResistant))*100
+data <- data %>% mutate(Antibiotic = fct_reorder(Antibiotic, ResistantPercent, .fun = median, na.rm = TRUE))
+#data$PathogenName <- data$ï..PathogenName  #Zoe needs this line, hash it out as needed.
+
+
+data2 <- read.csv("Datav11_Apr19.2021.data.csv")
+### Need this next line because Drug Class are still not identical between the two datasets: Beta-lactams/Penicillins -> Penicillins, and Nitroimidazole -> Nitroimidazoles
+data2$DrugClass <- factor(data2$DrugClass, levels = c("Aminoglycosides", "Beta-lactams/Penicillins", "Carbapenems", "Cephalosporins(1stgen)", "Cephalosporins(2ndgen)", "Cephalosporins(3rdgen)", "Cephalosporins(4thgen)", "Cephalosporins(5thgen)", "Fluoroquinolones", "Glycopeptides", "Macrolides",  "Nitroimidazole", "Rifamycins", "Tetracyclines", "Trimethoprim-sulfamethoxazole"), labels = c("Aminoglycosides", "Penicillins", "Carbapenems", "Cephalosporins(1stgen)", "Cephalosporins(2ndgen)", "Cephalosporins(3rdgen)", "Cephalosporins(4thgen)", "Cephalosporins(5thgen)", "Fluoroquinolones", "Glycopeptides", "Macrolides",  "Nitroimidazoles", "Rifamycins", "Tetracyclines", "Trimethoprim-sulfamethoxazole"))
+data2$ResearchEffortPath = log10(data2$ResearchEffortPath)
+data2$ResearchEffortDrug = log10(data2$ResearchEffortDrug)
+data2$DrugUseTotal = log10(data2$DrugUseTotal)
+data2 <- data2 %>% mutate(DrugClass = fct_reorder(DrugClass, ResistanceScore, .fun = mean, na.rm = TRUE))
+#data2$PathogenName <- data2$ï..PathogenName  #Zoe needs this line, hash it out as needed.
+
+
+#### COMBINE DATASETS TO MAKE PANELS A AND C####
+### Expert Opinion ######
+EOM <- data2 %>%
+  group_by(PathogenName) %>%
+  summarise(Score = mean(ResistanceScore),
+            ScoreUpper = mean(ResistanceScore)+sd(ResistanceScore)/sqrt(length(ResistanceScore)),
+            ScoreLower = mean(ResistanceScore)-sd(ResistanceScore)/sqrt(length(ResistanceScore)))
+
+### Algorithmic Review ######
+#Here's an example for creating a dataset with Median and Quantiles
+ARM <- data %>%
+  group_by(PathogenName) %>%
+  summarise(Percent = median(ResistantPercent),
+            PercentUpper = quantile(ResistantPercent, probs = c(0.75), na.rm = TRUE),
+            PercentLower = quantile(ResistantPercent, probs = c(0.25), na.rm = TRUE))
+ 
+
+ #These two lines join the two datasets, and then order Pathogen name in ascending order of Score and then Percent - note the backwards (to me) order of operations.
+CombinedData <- full_join(EOM, ARM)
+CombinedData <- CombinedData %>% mutate(PathogenName = fct_reorder2(PathogenName, Percent, Score, .desc = FALSE))
+
+##### EOM PATHOGEN PLOT -- PANEL A of FIgure ######
+CombinedData <- CombinedData %>% mutate(PathogenName = fct_reorder(PathogenName, Score, .fun = mean, na.rm = TRUE))
+
+##Here we want to color the datapoints by the drug class they come from. Adn make sure that the same drugclass:color scheme is used for hte EOM DRUG CLASS plot as well. WE also want those antibiotics with only one data point to have open symobls and all others to have filled symbols. 
+
+colorpalette <- c("Tetracyclines" = "blue1", 
+                  "Carbapenems" = "dodgerblue2",
+                  "Cephalosporins(5thgen)" ="skyblue2",
+                  "Aminoglycosides" = "darkturquoise", 
+                  "Penicillins" = "palegreen2", 
+                  "Glycopeptides" = "green4",
+                  "Rifamycins" = "gray70", 
+                  "Cephalosporins(3rdgen)" = "#CAB2D6",
+                  "Cephalosporins(2ndgen)" = "#6A3D9A",
+                  "Macrolides" = "orchid1",
+                  "Fluoroquinolones" = "pink1" , 
+                  "Cephalosporins(1stgen)" = "#E31A1C" , 
+                  "Cephalosporins(4thgen)" ="darkorange4", 
+                  "Trimethoprim-sulfamethoxazole" ="yellow4",
+                  "Nitroimidazoles" = "gold1", 
+                  "white" = "white")
+
+####### ARM PATHOGEN PLOT -- PANEL C OF Figure#####
+
+n_of_studies <- dplyr::count(data, PathogenName)  ##This creates a dataframe of the number of occurances for each PathogenName
+PathogenName_cutoff <- n_of_studies %>% filter(n > 1)  ## This filters out PathogenName with fewer than 2 occurances
+PathogenName_List <- as.character(PathogenName_cutoff$PathogenName)  ## This is necessary to create a list to filter the original dataset
+multiplestudies <- CombinedData %>% filter(PathogenName %in% c(PathogenName_List))  ## This says filter the original dataset to only the PathogenName we choose
+
+CombinedData$Color <- ifelse(CombinedData$PathogenName %in% c(PathogenName_List), "Filled", "Open") #This creates a new column in your dataset: those Pathogen names we chose before will have values named "Filled", and the rest are "Open"
+
+n_of_studies2 <- dplyr::count(data2, PathogenName)  ##This creates a dataframe of the number of occurances for each PathogenName
+PathogenName_cutoff2 <- n_of_studies2 %>% filter(n > 1)  ## This filters out PathogenName with fewer than 2 occurances
+PathogenName_List2 <- as.character(PathogenName_cutoff2$PathogenName)  ## This is necessary to create a list to filter the original dataset
+multiplestudies2 <- CombinedData %>% filter(PathogenName %in% c(PathogenName_List2))  ## This says filter the original dataset to only the PathogenName we choose
+
+CombinedData$Color2 <- ifelse(CombinedData$PathogenName %in% c(PathogenName_List2), "Filled", "Open") 
+
+n_of_studies3 <- dplyr::count(data2, DrugClass)  ##This creates a dataframe of the number of occurances for each DrugClass
+DrugClass_cutoff <- n_of_studies3 %>% filter(n > 1)  ## This filters out PathogenName with fewer than 2 occurances
+DrugClass_List <- as.character(DrugClass_cutoff$DrugClass)  ## This is necessary to create a list to filter the original dataset
+multiplestudies3 <- data2 %>% filter(DrugClass %in% c(DrugClass_List))  ## This says filter the original dataset to only the PathogenName we choose
+
+data2$C_Fill <- ifelse(data2$DrugClass %in% c(DrugClass_List), as.character(data2$DrugClass), "white")
+
+n_of_studies4 <- dplyr::count(data, Antibiotic)  ##This creates a dataframe of the number of occurances for each DrugClass
+Antibiotic_cutoff <- n_of_studies4 %>% filter(n > 1)  ## This filters out PathogenName with fewer than 2 occurances
+Antibiotic_List <- as.character(Antibiotic_cutoff$Antibiotic)  ## This is necessary to create a list to filter the original dataset
+multiplestudies4 <- data%>% filter(Antibiotic %in% c(Antibiotic_List))  ## This says filter the original dataset to only the PathogenName we choose
+
+data$D_Fill <- ifelse(data$Antibiotic %in% c(Antibiotic_List), as.character(data$DrugClass), "white")
+
+
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=14,face = "bold", vjust = 1), 
+  axis.title.y = element_text(size=14,face = "bold", vjust = 1), 
+  axis.text.x = element_text( size=10), 
+  axis.text.y = element_text(size=10), 
+  plot.title = element_text(face = "bold", size = 24, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"),
+  legend.position = "none")
+
+
+```
+```{r Figure 2 - Individual Panels }
+A_PathogenEOM <-
+ggplot(CombinedData, aes(x = PathogenName, y = Score)) + 
+  ylab("Resistance Score") + xlab("Pathogen Name") + ylim(0,2) + 
+  stat_summary(fun = mean, geom = "point", pch = 21, size = 3, aes(fill = Color2), na.rm = TRUE) +
+  geom_errorbar(data = multiplestudies2, aes(ymin = ScoreLower, ymax = ScoreUpper)) + curtstheme +
+   theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))+ scale_fill_manual(values = c("#000000", "#FFFFFF")) + theme(legend.position = "none")
+
+C_Pathogen_ARM <-
+ggplot(CombinedData, aes(x = PathogenName, y = Percent)) + 
+  ylab("Percent Resistance") + xlab("Pathogen Name") + ylim(0,100) +
+  stat_summary(fun = median, geom = "point", pch = 21, size = 3, aes(fill = Color), na.rm = TRUE) +
+  geom_errorbar(data = multiplestudies, aes(ymin = PercentLower, ymax = PercentUpper)) + curtstheme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0)) + scale_fill_manual(values = c("#000000", "#FFFFFF")) + theme(legend.position = "none")
+
+B_DrugClass <-
+ggplot(data2, aes(x = DrugClass, y = ResistanceScore, color = DrugClass, fill = C_Fill)) + ylab("") + ylim(0,2)+
+  stat_summary(fun = mean, geom = "point", na.rm = TRUE, pch = 21, size = 3, stroke = 2) +
+  stat_summary(geom = "errorbar", fun.data = mean_se, na.rm = TRUE) + 
+  curtstheme +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))  + scale_color_manual(values = colorpalette) + scale_fill_manual(values = colorpalette)
+
+data3 <- data %>% mutate(DrugClass = fct_reorder(DrugClass, ResistantPercent, .fun = median, na.rm = TRUE))
+D_Antibiotic <-  
+ggplot() +
+  stat_summary(data, mapping = aes(x = Antibiotic, y = ResistantPercent, color = DrugClass, fill = D_Fill), fun = median, geom = "point", na.rm = TRUE, pch = 21, size = 2, stroke = 1.5)  +
+  stat_summary(data = multiplestudies4, aes(x = Antibiotic, y = ResistantPercent, color = DrugClass), geom = "errorbar",fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) }) + curtstheme +  theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0))+ ylab("") +ylim(0,100) + scale_color_manual(values = colorpalette) + scale_fill_manual(values = colorpalette)
+
+
+
+### putting it together ###
+  
+  figureARM <- plot_grid(C_Pathogen_ARM, D_Antibiotic, ncol = 2, align="h",labels = c('C', 'D'))
+  title <- ggdraw() + 
+  draw_label(
+    "Algorithmic Review Method",
+    fontface = 'bold',
+    x = 0.4,
+    hjust = 0
+  )
+  
+  figureARM1 <- plot_grid(
+  title, figureARM,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+
+  figureEOM <- plot_grid(A_PathogenEOM, B_DrugClass, ncol = 2, align="h",labels = c('A', 'B'))
+  title <- ggdraw() + 
+  draw_label(
+    "Expert Opinion Method",
+    fontface = 'bold',
+    x = 0.4,
+    hjust = 0
+  )
+
+  figureEOM1 <- plot_grid(
+  title, figureEOM,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+  
+```
+```{r Figure 2 - Combine plots and Export }
+library(cowplot)
+
+figure1 <- plot_grid(figureEOM1 , figureARM1, nrow = 2)
+
+figure1
+
+ggsave(filename = "5.30.2023_FIGURE_2.pdf", plot = figure1, device = "pdf", width = 20, height = 20)
+
+```
+###### BIVARIATE ANALYSIS FIGURES FIGURES 3 and 4 ####
+```{r Raw plots}
+library (lme4)
+library (lmtest)
+#install.packages ("lmtest")
+m0 <- lmer(ResistanceScore ~ 1 + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m0)
+
+library (ggplot2)
+
+m1 <- lmer(ResistanceScore ~ 1 + Nosocomial + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m1)
+#plot (jitter(data2$Nosocomial), jitter(data2$ResistanceScore), main = "Nosocomial")
+#abline(fixef(m1))
+
+m2 <- lmer(ResistanceScore ~ 1 + Zoonosis + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m2)
+#plot (jitter(data2$Zoonosis), jitter(data2$ResistanceScore), main = "Zoonosis")
+#abline(fixef(m2))
+
+m3 <- lmer(ResistanceScore ~ 1 + NaturallyCompetent + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m3)
+#plot (jitter(data2$NaturallyCompetent), jitter(data2$ResistanceScore), main = "NaturallyCompetent")
+#abline(fixef(m3))
+
+m4 <- lmer(ResistanceScore ~ 1 + Humantransmission + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m4)
+#plot (jitter(data2$Humantransmission), jitter(data2$ResistanceScore), main = "Humantransmission")
+#abline(fixef(m4))
+
+m5 <- lmer(ResistanceScore ~ 1 + TransmissionType + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m5)
+#plot (jitter(data2$TransmissionType), jitter(data2$ResistanceScore), main = "TransmissionType")
+#abline(fixef(m5))
+
+
+m6 <- lmer(ResistanceScore ~ 1 + ResearchEffortDrug + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m6)
+#plot (jitter(data2$ResearchEffortDrug), jitter(data2$ResistanceScore), main = "Research Effort Drug")
+#abline(fixef(m6))
+
+m7 <- lmer(ResistanceScore ~ 1 + ResearchEffortPath + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m7)
+#plot (jitter(data2$ResearchEffortPath), jitter(data2$ResistanceScore), main = "Research Effort Pathogen")
+#abline(fixef(m7))
+
+m8 <- lmer(ResistanceScore ~ 1 + Commensal + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m8)
+#plot (jitter(data2$Commensal), jitter(data2$ResistanceScore), main = "Commensal")
+#abline(fixef(m8))
+
+m9 <- lmer(ResistanceScore ~ 1 + DrugDate + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m9)
+#plot ((data2$DrugDate), jitter(data2$ResistanceScore), main = "DrugDate",abline(fixef(m9)))
+#abline(fixef(m9))
+
+
+m10 <- lmer(ResistanceScore ~ 1 + Bactericidal.Static + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m10)
+#plot (data2$Bactericidal.Static, jitter(data2$ResistanceScore), main = "Bactericidal.Static")
+
+m11 <- lmer(ResistanceScore ~ 1 + Pathogentype + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m11)
+#plot (data2$Pathogentype, jitter(data2$ResistanceScore), main = "Pathogentype")
+
+m12 <- lmer(ResistanceScore ~ 1 + EnvrionmentalReservoir + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m12)
+#plot (jitter(data2$EnvrionmentalReservoir), jitter(data2$ResistanceScore), main = "EnvironmentalReservoir")
+#abline(fixef(m12)) ##error says plot.new not called yet
+
+m13 <- lmer(ResistanceScore ~ 1 + DrugUseTotal + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m13)
+#plot (jitter(data2$DrugUseTotal), jitter(data2$ResistanceScore), col = data2$DrugClass ,main = "Drug Use")
+#abline(fixef(m13))
+
+
+m14 <- lmer(ResistanceScore ~ 1 + Conjugation + (1|PathogenName) + (1|DrugClass), data= data2)
+summary(m13)
+#plot (jitter(data2$Conjugation), jitter(data2$ResistanceScore), col = data2$DrugClass ,main = "Conjugation")
+#abline(fixef(m14))
+
+#plot(jitter(data2$Conjugation), data2$ResistanceScore, ylab = "Resistance Score")
+
+lrtest(m0,m1)
+lrtest(m0,m2)
+lrtest(m0,m3)
+lrtest(m0,m4)
+lrtest(m0,m5)
+lrtest(m0,m6)
+lrtest(m0,m7)
+lrtest(m0,m8)
+lrtest(m0,m9)
+lrtest(m0,m10)
+lrtest(m0,m11)
+lrtest(m0,m12)
+lrtest(m0,m13)
+lrtest(m0,m14)
+
+
+fixef(m9)
+
+
+```
+```{r FIGURE 3 Bivariate Figures EOM_July2022}
+###### BIVARIATE ANALYSIS FIGURES #######
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+library(forcats)
+library(dplyr)
+
+
+data2$Nosocomial[data2$Nosocomial == "0"] <- "Not Nosocomial"
+data2$Nosocomial[data2$Nosocomial == "1"] <- "Nosocomial"
+
+data2$TransmissionType[data2$TransmissionType == "0"] <- "Direct"
+data2$TransmissionType[data2$TransmissionType == "1"] <- "Indirect"
+
+data2$Humantransmission[data2$Humantransmission == "0"] <- "Not Documented"
+data2$Humantransmission[data2$Humantransmission == "1"] <- "Documented"
+
+data2$Zoonosis[data2$Zoonosis == "0"] <- "No"
+data2$Zoonosis[data2$Zoonosis == "1"] <- "Yes"
+
+data2$Commensal[data2$Commensal == "0"] <- "Not Documented"
+data2$Commensal[data2$Commensal == "1"] <- "Documented"
+  
+data2$Conjugation[data2$Conjugation == "0"] <- "Not Documented"
+data2$Conjugation[data2$Conjugation == "1"] <- "Documented"
+  
+data2$NaturallyCompetent[data2$NaturallyCompetent == "0"] <- "Not Documented"
+data2$NaturallyCompetent[data2$NaturallyCompetent == "1"] <- "Documented"
+ 
+data2$EnvrionmentalReservoir[data2$EnvrionmentalReservoir == "0"] <- "Not Documented"
+data2$EnvrionmentalReservoir[data2$EnvrionmentalReservoir == "1"] <- "Documented"
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=10,face = "bold", vjust = 1), 
+  axis.title.y = element_text(size=14,face = "bold", vjust = 1), 
+  axis.text.x = element_text( size=10), 
+  axis.text.y = element_text( size=10), 
+  plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+library(ggsignif)
+
+Nosocomial <- ggplot(data2, aes(x = Nosocomial, y = ResistanceScore)) + ggtitle("Nosocomial") + geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) + 
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+ geom_signif(comparisons = list(c("Not Nosocomial", "Nosocomial")),annotations="***",  map_signif_level=TRUE)+
+  curtstheme+
+  theme(axis.text.x = element_text(angle = 12, hjust = 0.5), 
+        axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+HumanTransmission <- ggplot(data2, aes(x = Humantransmission, y = ResistanceScore)) + ggtitle("Human-to-Human Trans") + ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +geom_signif(comparisons = list(c("Not Documented", "Documented")),annotations = "NS.",
+              map_signif_level=TRUE)+
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme +theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+TransmissionType <- ggplot(data2, aes(x = TransmissionType, y = ResistanceScore)) + ylab("") + ggtitle("Transmission Type")+geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+  #stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.5)+
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Direct", "Indirect")), 
+              map_signif_level=TRUE)+
+  curtstheme +theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+Zoonosis <- ggplot(data2, aes(x = Zoonosis, y = ResistanceScore)) + ggtitle("Zoonosis") + ylab("") + geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+  #stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.5)+
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("No", "Yes")), annotations="*",
+              map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+Commensal <- ggplot(data2, aes(x = Commensal, y = ResistanceScore)) + ggtitle("Commensal")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Not Documented", "Documented")), annotations="**",
+              map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+
+Competence <- ggplot(data2, aes(x = NaturallyCompetent, y = ResistanceScore)) + ggtitle("Natural Competence")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Not Documented", "Documented")),annotations="*", map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+Conjugation <- ggplot(data2, aes(x = Conjugation , y = ResistanceScore)) + ggtitle("Conjugation")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Not Documented", "Documented")), annotations="**",
+              map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+Environment <- ggplot(data2, aes(x = EnvrionmentalReservoir , y = ResistanceScore)) + ggtitle("Environmental Reservoir ")+  geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Not Documented", "Documented")), map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+PathogenType <- ggplot(data2, aes(x = Pathogentype , y = ResistanceScore)) + ggtitle("Pathogen Type ")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Anaerobic", "GramNegative","GramPositive","Other")), map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+
+DrugMech <- ggplot(data2, aes(x = Bactericidal.Static , y = ResistanceScore)) + ggtitle("Drug Mechanism")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0.1, width= 0.1)) +
+    stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+ geom_signif(comparisons = list(c("Bactericidal", "Bacteriostatic")), map_signif_level=TRUE)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+DrugDate <-  ggplot(data2, aes(x = DrugDate , y = ResistanceScore)) + ggtitle("Drug Date") + ylab("") + xlab("Year")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0.1, width= 0)) + geom_abline(slope=-0.0052 , intercept=11.34, color = 'black', linewidth = 1) +
+  #geom_smooth(method = lm,se = FALSE, color = 'black')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+DrugUse <-   ggplot(data2, aes(x = DrugUseTotal , y = ResistanceScore)) + ggtitle("Global Drug Use (log10)")+ ylab("")+ xlab("Global Drug Use (log10)")+geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0.1, width= 0)) + #geom_smooth(method = lm,se = FALSE, color = 'grey')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                   # ,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+
+REPath <- ggplot(data2, aes(x = ResearchEffortPath , y = ResistanceScore)) + ggtitle("Research Effort Path (log10)")+ ylab("")+ xlab("Research Effort Pathogen (log10)")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0.1, width= 0)) + geom_abline(slope=0.402 , intercept=-0.534, color = 'black', linewidth = 1) +
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+
+REDrug <- ggplot(data2, aes(x = ResearchEffortDrug , y = ResistanceScore)) + ggtitle("Research Effort Drug (log10)")+ ylab("")+ xlab("Research Effort Drug (log10)")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0.1, width= 0)) + 
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))#,
+                    #axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+   
+library(cowplot)
+EOM_RawPlots <-  
+  plot_grid(Nosocomial, TransmissionType, HumanTransmission,  Zoonosis, Commensal, Environment, Competence, Conjugation, PathogenType, DrugMech,DrugDate,DrugUse,REPath, REDrug, labels = "AUTO",  nrow = 2 ,ncol = 7, align="h") 
+
+#title <- ggdraw() + 
+  draw_label(
+    "Expert Opinion Method",
+    fontface = 'bold',
+    x = 0.35,
+    hjust = 0
+  )
+
+#RawPlotsFigure <- plot_grid(title, EOM_RawPlots, ncol = 1)
+#ggsave(filename = "RawPlots_EOM_8.1.22.pdf", plot = EOM_RawPlots, device = "pdf",width = 18, height = 10)
+DrugDate
+```
+```{r FIGURE 4 Bivariate Figures ARM}
+###### BIVARIATE ANALYSIS FIGURES EOM#### #######
+
+data$Nosocomial[data$Nosocomial == "0"] <- "Not Nosocomial"
+data$Nosocomial[data$Nosocomial == "1"] <- "Nosocomial"
+
+data$TransmissionType[data$TransmissionType == "0"] <- "Direct"
+data$TransmissionType[data$TransmissionType == "1"] <- "Indirect"
+
+data$Humantransmission[data$Humantransmission == "0"] <- "Not Documented"
+data$Humantransmission[data$Humantransmission == "1"] <- "Documented"
+
+data$Zoonosis[data$Zoonosis == "0"] <- "No"
+data$Zoonosis[data$Zoonosis == "1"] <- "Yes"
+
+data$Commensal[data$Commensal == "0"] <- "Not Documented"
+data$Commensal[data$Commensal == "1"] <- "Documented"
+  
+data$Conjugation[data$Conjugation == "0"] <- "Not Documented"
+data$Conjugation[data$Conjugation == "1"] <- "Documented"
+  
+data$NaturallyCompetent[data$NaturallyCompetent == "0"] <- "Not Documented"
+data$NaturallyCompetent[data$NaturallyCompetent == "1"] <- "Documented"
+ 
+data$EnvrionmentalReservoir[data$EnvrionmentalReservoir == "0"] <- "Not Documented"
+data$EnvrionmentalReservoir[data$EnvrionmentalReservoir == "1"] <- "Documented"
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=10,face = "bold", vjust = 1), 
+  axis.title.y = element_text(size=14,face = "bold", vjust = 1), 
+  axis.text.x = element_text( size=10), 
+  axis.text.y = element_text( size=10), 
+  plot.title = element_text(face = "bold", size = 13, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+Nosocomial <- ggplot(data, aes(x = Nosocomial, y = ResistantPercent)) + ggtitle("Nosocomial") + geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+  stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+ geom_signif(comparisons = list(c("Not Nosocomial", "Nosocomial")),annotations="*",  map_signif_level=TRUE)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+ 
+  curtstheme+
+  theme(axis.text.x = element_text(angle = 12, hjust = 0.5), 
+        axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+HumanTransmission <- ggplot(data, aes(x = Humantransmission, y = ResistantPercent)) + ggtitle("Human-to-Human Trans") + ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+  geom_signif(comparisons = list(c("Not Documented", "Documented")),annotations="NS.",  map_signif_level=TRUE)+
+  stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme +theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+TransmissionType <- ggplot(data, aes(x = TransmissionType, y = ResistantPercent)) + ylab("") + ggtitle("Transmission Type")+geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+geom_signif(comparisons = list(c("Direct", "Indirect")),annotations="NS.",  map_signif_level=TRUE)+
+ stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme +theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+Zoonosis <- ggplot(data, aes(x = Zoonosis, y = ResistantPercent)) + ggtitle("Zoonosis")+ ylab("") + geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+  stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Yes", "No")),  map_signif_level=TRUE)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+Commensal <- ggplot(data, aes(x = Commensal, y = ResistantPercent)) + ggtitle("Commensal")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+geom_signif(comparisons = list(c("Not Documented", "Documented")), annotations = "NS.", map_signif_level=TRUE)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+
+Competence <- ggplot(data, aes(x = NaturallyCompetent, y = ResistantPercent)) + ggtitle("Natural Competence")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) + geom_signif(comparisons = list(c("Not Documented", "Documented")),  map_signif_level=TRUE)+
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+Conjugation <- ggplot(data, aes(x = Conjugation , y = ResistantPercent)) + ggtitle("Conjugation")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) + geom_signif(comparisons = list(c("Not Documented", "Documented")),  map_signif_level=TRUE)+
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+   # stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+Environment <- ggplot(data, aes(x = EnvrionmentalReservoir , y = ResistantPercent)) + ggtitle("Environmental Reservoir ")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) + geom_signif(comparisons = list(c("Not Documented", "Documented")),  map_signif_level=TRUE)+
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+   # stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+PathogenType <- ggplot(data, aes(x = Pathogentype , y = ResistantPercent)) + ggtitle("Pathogen Type ")+ ylab("")+ geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) + 
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+
+
+DrugMech <- ggplot(data, aes(x = Bactericidal.Static , y = ResistantPercent)) + ggtitle("Drug Mechanism")+ ylab("") +geom_point(shape = 1, color = 'grey', position = position_jitter(height=0, width= 0.1)) +
+   stat_summary(fun.min = function(z) { quantile(z,0.25) },fun.max = function(z) { quantile(z,0.75) },fun = median,geom="crossbar", width=0.2)+
+  geom_signif(comparisons = list(c("Bactericidal", "Bacteriostatic")),  map_signif_level=TRUE)+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5),
+                    axis.title.x = element_blank())+
+  stat_n_text(na.rm = TRUE)
+
+DrugDate <- ggplot(data, aes(x = AntibioticDate , y = ResistantPercent)) + ggtitle("Antibiotic Date")+ ylab("") + xlab("Year")+ ylab("")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0, width= 0)) + #geom_smooth(method = lm,se = FALSE, color = 'black')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+DrugUse <- ggplot(data, aes(x = DrugUseTotal , y = ResistantPercent)) + ggtitle("Global Drug Use (log10)")+ ylab("")+ xlab("Global Drug Use (log10)")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0, width= 0)) + #geom_smooth(method = lm,se = FALSE, color = 'black')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+
+REPath <- ggplot(data, aes(x = ResearchEffortPath , y = ResistantPercent)) + ggtitle("Research Effort Path (log10)")+ ylab("")+ xlab("Research Effort Pathogen (log10)")+ geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0, width= 0)) + #geom_smooth(method = lm,se = FALSE, color = 'black')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+
+REDrug <- ggplot(data, aes(x = ResearchEffortAntibiotic , y = ResistantPercent)) + ggtitle("Research Effort Antibiotic (log10)")+ ylab("")+ xlab("Research Effort Antibiotic (log10)")+geom_point(shape = 1, color = 'dark grey', position = position_jitter(height=0, width= 0)) + #geom_smooth(method = lm,se = FALSE, color = 'black')+
+    #stat_summary(fun.data="mean_se", fun.args = list(mult=1), geom="crossbar", width=0.2)+
+  curtstheme+ theme(axis.text.x = element_text(angle = 12, hjust = 0.5))
+                    #,axis.title.x = element_blank())#+stat_n_text(na.rm = TRUE)
+
+   
+library(cowplot)
+ARM_RawPlots <-  
+  plot_grid(Nosocomial, TransmissionType, HumanTransmission,  Zoonosis, Commensal, Environment, Competence, Conjugation, PathogenType, DrugMech,DrugDate,DrugUse,REPath, REDrug, labels = "auto",  nrow = 2 ,ncol = 7, align="h") 
+
+#RawPlotsFigure <- plot_grid(title, EOM_RawPlots, ncol = 1)
+#ggsave(filename = "RawPlots_ARM_8.1.2022.pdf", plot = ARM_RawPlots, device = "pdf",width = 15, height = 21)
+
+```
+```{r Figure 3 EOM_ARM Combined_July 2022}
+library(cowplot)
+
+figure1 <- plot_grid(EOM_RawPlots , ARM_RawPlots, nrow = 2)
+#figure1 <- plot_grid(figureEOM1 , figureARM1, nrow = 2)
+#figure1
+
+
+#RawPlotsFigure <- plot_grid(title, EOM_RawPlots, ncol = 1)
+ggsave(filename = "Figure4_Jan2024_v4.pdf", plot = figure1, device = "pdf",width = 25, height = 14)
+
+```
+##### FIGURE 5 ###########
+```{r Correlation Path Traits}
+dataCor <- read.csv("Path_CorrelationsData.csv")
+dataCor <- dataCor[,c(2,3,4,5,6,7,8,9,10,11,12,13)]
+dataCor
+library (dplyr)
+
+
+##### PLotting correlations ########  
+  
+#install.packages("corrplot")
+library(corrplot)
+
+res <- cor(dataCor)
+round(res, 2)
+
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+##### PLotting correlations with signifincance only ########  
+# Insignificant correlations are left blank
+#install.packages('Hmisc')
+library(Hmisc)
+res2 <- rcorr(as.matrix(dataCor))
+res2
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix - to make a table with correlations and significance values
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+flattenCorrMatrix(res2$r, res2$P)
+
+  
+corrplot(res2$r, type="upper", order="alphabet", tl.col = "black", tl.srt = 45,tl.cex = 0.75,
+       p.mat = res2$P,sig.level = 0.05, insig = "blank")
+
+res2
+```
+```{r Correlation Drug Traits}
+dataCor <- read.csv("Drug_CorrelationsData.csv")
+dataCor <- dataCor[,c(2,3,4,5)]
+dataCor
+library (dplyr)
+
+
+##### PLotting correlations ########  
+  
+#install.packages("corrplot")
+library(corrplot)
+
+res <- cor(dataCor)
+round(res, 2)
+
+#corrplot(res, type = "upper", order = "hclust", 
+  #       tl.col = "black", tl.srt = 45)
+
+##### PLotting correlations with signifincance only ########  
+# Insignificant correlations are left blank
+#install.packages('Hmisc')
+library(Hmisc)
+res2 <- rcorr(as.matrix(dataCor))
+res2
+
+# ++++++++++++++++++++++++++++
+# flattenCorrMatrix - to make a table with correlations and significance values
+# ++++++++++++++++++++++++++++
+# cormat : matrix of the correlation coefficients
+# pmat : matrix of the correlation p-values
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+flattenCorrMatrix(res2$r, res2$P)
+
+  
+corrplot(res2$r, type="upper", order="alphabet", tl.col = "black", tl.srt = 45,tl.cex = 0.75,
+       p.mat = res2$P,sig.level = 0.05, insig = "blank")
+
+res2
+```
+####### FIGURE 6 #######
+```{r Loading data: save image files; takes a few hours for both to load}
+#load("ExpertOpinion.RData")
+load("ARMData.RData")
+```
+```{r AIC weights of Factors- EOM}
+#Calculating AIC weights of each factor t determine the probability that a given factor 
+
+numNosocomial <- sum(exp(-DAIC[which(ModelStructures[,1] == 1)]/2))
+numCommensal <- sum(exp(-DAIC[which(ModelStructures[,2] == 1)]/2))
+numZoonosis <- sum(exp(-DAIC[which(ModelStructures[,3] == 1)]/2))
+numHumantransmission <- sum(exp(-DAIC[which(ModelStructures[,4] == 1)]/2))
+numCompetence <- sum(exp(-DAIC[which(ModelStructures[,5] == 1)]/2))
+numCidalStatic <- sum(exp(-DAIC[which(ModelStructures[,6] == 1)]/2))
+numPathogentype <- sum(exp(-DAIC[which(ModelStructures[,7] == 1)]/2))
+numTransmissionType <- sum(exp(-DAIC[which(ModelStructures[,8] == 1)]/2))
+numResearchEffortPath <- sum(exp(-DAIC[which(ModelStructures[,9] == 1)]/2))
+numDrugDate <- sum(exp(-DAIC[which(ModelStructures[,10] == 1)]/2))
+numResearchEffortDrug <- sum(exp(-DAIC[which(ModelStructures[,11] == 1)]/2))
+numEnvironmentalReservoir <- sum(exp(-DAIC[which(ModelStructures[,12] == 1)]/2))
+numDrugUseTotal <- sum(exp(-DAIC[which(ModelStructures[,13] == 1)]/2))
+numConjugation <- sum(exp(-DAIC[which(ModelStructures[,14] == 1)]/2))
+
+denominator <- sum(exp(-DAIC/2))
+
+
+df.FactorAIC <- data.frame("Factor" = c(  "Nosocomial", "Zoonosis","NaturallyCompetent", "Conjugation","TransmissionType", "ResearchEffortDrug",  "ResearchEffortPath", "DrugUseTotal", "DrugDate", "Bactericidal.Static","EnvrionmentalReservoir","Commensal","Humantransmission", "Pathogentype"),  "AICweights" = c(
+numNosocomial/denominator,
+numZoonosis/denominator,
+numCompetence/denominator,
+numConjugation /denominator,
+numTransmissionType /denominator,
+numResearchEffortDrug/denominator,
+numResearchEffortPath/denominator,
+numDrugUseTotal / denominator,
+numDrugDate/denominator,
+numEnvironmentalReservoir/denominator,
+numCidalStatic /denominator,
+numCommensal/denominator,
+numHumantransmission /denominator,
+numPathogentype /denominator
+))
+
+df.FactorAIC
+library(dplyr)
+library(forcats)
+#df.FactorAIC2 <- df.FactorAIC %>% mutate(Factors = fct_reorder(Factors, AICweights, na.rm = TRUE, .desc = TRUE))
+
+
+#TO ORDER IN DESCENDING ORDER Use code below, for same order as listed in the original, use next section
+#df.FactorAIC <- df.FactorAIC[with(df.FactorAIC, order(-AICweights)), ] #To arrange in descending order of values
+#df.FactorAIC$Factors <- factor(df.FactorAIC$Factors, levels = df.FactorAIC$Factors)#in descending order
+
+#lock in Factor level order
+df.FactorAIC$Factor <- factor(df.FactorAIC$Factor,levels = c("Zoonosis", "TransmissionType","ResearchEffortPath","Pathogentype","DrugDate","Nosocomial","Commensal","Conjugation","ResearchEffortDrug",  "Bactericidal.Static","DrugUseTotal","NaturallyCompetent","Humantransmission","EnvrionmentalReservoir" ))
+
+df.FactorAIC
+
+write.csv(df.FactorAIC, "~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ERM_AICWeights.csv")
+```
+```{r Factor-wise DAIC from Best Model EOM}
+library (lme4)
+bestMod <- lmer(ResistanceScore ~ 1 + Nosocomial + Zoonosis  + Commensal + Pathogentype + TransmissionType + ResearchEffortPath + DrugDate + (1 | PathogenName) + (1 |DrugClass), data = data2, REML = FALSE)
+summary(bestMod)
+AIC(bestMod)
+
+ModNosocomial <- update(bestMod, ~ . - Nosocomial)
+DAICNosocomial = AIC(ModNosocomial) - AIC(bestMod)
+
+ModZoonosis <- update(bestMod, ~ . - Zoonosis)
+DAICZoonosis = AIC(ModZoonosis) - AIC(bestMod)
+
+ModHumanTr <- update(bestMod, ~ . + Humantransmission)
+DAICHumanTr = AIC(ModHumanTr) - AIC(bestMod)
+
+ModNatComp <- update(bestMod, ~ . + NaturallyCompetent)
+DAICNatComp = AIC(ModNatComp) - AIC(bestMod)
+
+ModTrType <- update(bestMod, ~ . - TransmissionType)
+DAICTrType = AIC(ModTrType) - AIC(bestMod)
+
+ModREDrug <- update(bestMod, ~ . + ResearchEffortDrug)
+DAICREDrug = AIC(ModREDrug) - AIC(bestMod)
+
+ModREPath <- update(bestMod, ~ . - ResearchEffortPath)
+DAICREPath = AIC(ModREPath) - AIC(bestMod)
+
+ModDrugDt <- update(bestMod, ~ . - DrugDate)
+DAICDrugDt = AIC(ModDrugDt) - AIC(bestMod)
+
+ModCidal <- update(bestMod, ~ . + Bactericidal.Static)
+DAICCidal = AIC(ModCidal) - AIC(bestMod)
+
+ModEnvRes <- update(bestMod, ~ . + EnvrionmentalReservoir)
+DAICEnvRes = AIC(ModEnvRes) - AIC(bestMod)
+
+ModCommensal <- update(bestMod, ~ . - Commensal)
+DAICCommensal = AIC(ModCommensal) - AIC(bestMod)
+
+ModPathogenType <- update(bestMod, ~ . - Pathogentype)
+DAICPathType = AIC(ModPathogenType) - AIC(bestMod)
+
+ModDrugUseTotal <- update(bestMod, ~ . + DrugUseTotal)
+DAICDrugUseTotal = AIC(ModDrugUseTotal) - AIC(bestMod)
+
+ModConjugation <- update(bestMod, ~ . + Conjugation)
+DAICConjugation = AIC(ModConjugation) - AIC(bestMod)
+
+
+nullModRandom <- lmer(ResistanceScore ~ 1 + (1|PathogenName) + (1|DrugClass), data = data2, REML = FALSE)
+DAICnullModRandom = AIC(nullModRandom) - AIC(bestMod)
+
+nullMod <- lm(ResistanceScore ~ 1, data = data2)
+DAICnullMod = AIC(nullMod) - AIC(bestMod)
+
+DAICNosocomial
+DAICNatComp
+DAICZoonosis 
+DAICTrType  
+DAICREDrug 
+DAICREPath 
+DAICDrugDt 
+DAICEnvRes
+DAICCidal
+DAICCommensal
+DAICHumanTr
+DAICPathType
+DAICDrugUseTotal
+DAICConjugation
+
+df2 <- data.frame("Factors" = c("-Zoonosis", "-TransmissionType","-ResearchEffortPath","-PathogenType","-DrugDate","-Nosocomial","-Commensal","+Conjugation","+ResearchEffortDrug",  "+Bactericidal.Static","+DrugUseTotal","+NaturallyCompetent","+HumanTransmission","+EnvrionmentalReservoir" ),
+                      "DeltaAIC"= c(DAICZoonosis,DAICTrType,DAICREPath, DAICPathType,DAICDrugDt,DAICNosocomial,DAICCommensal,DAICConjugation, DAICREDrug,DAICCidal,DAICDrugUseTotal, DAICNatComp, DAICHumanTr,DAICEnvRes)) 
+df2                       
+# lock in factor level order
+df2$Factors <- factor(df2$Factors, levels = df2$Factors)
+
+
+write.csv(df2, "~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ERM_DAIC.csv")
+
+df2
+
+```
+```{r EOM plots}
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+library(dplyr)
+library(forcats)
+
+################**************************##################**********************################
+
+#For making figures in September 2022. csv file from summary data instead of running the whole analysis again#
+
+df2 <- read.csv("ERM_df2.csv")
+df2$Factor <- factor(df2$Factor,levels =c("-Zoonosis", "-TransmissionType","-ResearchEffortPath","-PathogenType","-DrugDate","-Nosocomial","-Commensal","+Conjugation","+ResearchEffortDrug",  "+Bactericidal.Static","+DrugUseTotal","+NaturallyCompetent","+HumanTransmission","+EnvrionmentalReservoir" ))
+
+plot1 <- ggplot(df2, aes(x = Factor, y = DAIC, main = "Deviation from Best Model")) + geom_point() +
+   ylim(0,10) + xlab("")+
+  curtstheme +geom_hline(yintercept = 2.0, linetype="dashed", size = 0.2, color = "grey") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+################**************************##################**********************################
+ 
+df.FactorAIC <- read.csv("ERM_df.FactorAIC.csv")
+df.FactorAIC$Factor <- factor(df.FactorAIC$Factor,levels = c("Zoonosis", "TransmissionType","ResearchEffortPath","PathogenType","DrugDate","Nosocomial","Commensal","Conjugation","ResearchEffortDrug",  "Bactericidal.Static","DrugUseTotal","NaturallyCompetent","HumanTransmission","EnvrionmentalReservoir" ))
+df.FactorAIC
+plot2 <- ggplot(df.FactorAIC, aes(x = Factor, y = AICWeight, main = "AIC weights of Factors")) + geom_point() +
+   ylim(0,1) + xlab ("")+
+  curtstheme +geom_hline(yintercept = 0.50, linetype="dashed", size = 0.2, color = "grey") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+plot2
+################**************************##################**********************################
+
+library(cowplot)
+figure1 <- plot_grid(plot1, plot2, ncol = 2, align="h",labels = c('A', 'B')) 
+title <- ggdraw() + 
+  draw_label(
+    "Expert Review Method",
+    fontface = 'bold',
+    x = 0.38,
+    hjust = 0
+  )
+
+figureEOM <- plot_grid(
+  title, figure1,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+
+plot1
+
+```
+```{r AIC weights of Factors - ARM}
+#Calculating AIC weights of each factor t determine the probability that a given factor 
+
+numNosocomial <- sum(exp(-DAIC[which(ModelStructures[,1] == 1)]/2))
+numCommensal <- sum(exp(-DAIC[which(ModelStructures[,2] == 1)]/2))
+numZoonosis <- sum(exp(-DAIC[which(ModelStructures[,3] == 1)]/2))
+numHumantransmission <- sum(exp(-DAIC[which(ModelStructures[,4] == 1)]/2))
+numCompetence <- sum(exp(-DAIC[which(ModelStructures[,5] == 1)]/2))
+numCidalStatic <- sum(exp(-DAIC[which(ModelStructures[,6] == 1)]/2))
+numPathogentype <- sum(exp(-DAIC[which(ModelStructures[,7] == 1)]/2))
+numTransmissionType <- sum(exp(-DAIC[which(ModelStructures[,8] == 1)]/2))
+numResearchEffortPath <- sum(exp(-DAIC[which(ModelStructures[,9] == 1)]/2))
+numAntibioticDate <- sum(exp(-DAIC[which(ModelStructures[,10] == 1)]/2))
+numResearchEffortAntibiotic <- sum(exp(-DAIC[which(ModelStructures[,11] == 1)]/2))
+numEnvironmentalReservoir <- sum(exp(-DAIC[which(ModelStructures[,12] == 1)]/2))
+numDrugUseTotal <- sum(exp(-DAIC[which(ModelStructures[,13] == 1)]/2))
+numConjugation <- sum(exp(-DAIC[which(ModelStructures[,14] == 1)]/2))
+
+#numCommensalNoso <- sum(exp(-DAIC[which((ModelStructures[,2] == 1)|(ModelStructures[,1] == 1))]   /2))
+
+denominator <- sum(exp(-DAIC/2))
+
+
+df.FactorAICARM <- data.frame("Factors" = c("TransmissionType","Nosocomial","Pathogentype","Humantransmission","DrugUseTotal","ResearchEffortPath","AntibioticDate", "EnvrionmentalReservoir","Commensal","Conjugation","Bactericidal.Static","NaturallyCompetent", "Zoonosis","ResearchEffortAntibiotic"),  "AICweights" = c(
+numTransmissionType /denominator,
+numNosocomial/denominator,
+numPathogentype /denominator,
+numHumantransmission /denominator,
+numDrugUseTotal/denominator,
+numResearchEffortPath/denominator,
+numAntibioticDate/denominator,
+numEnvironmentalReservoir/denominator,
+numCommensal/denominator,
+numConjugation/denominator,
+numCidalStatic /denominator,
+numCompetence/denominator,
+numZoonosis/denominator,
+numResearchEffortAntibiotic/denominator
+))
+
+df.FactorAICARM
+
+
+df.FactorAICARM$Factors <- factor(df.FactorAICARM$Factors, levels = df.FactorAICARM$Factors)
+
+  
+write.csv(df.FactorAICARM, "~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ARM_AICWeights.csv")
+
+
+```
+```{r Factor-wise DAIC from Best Model}
+library (lme4)
+bestMod <- glmer(cbind(Resistant, NotResistant) ~ 1 + Nosocomial + Humantransmission + 
+    Pathogentype + TransmissionType + (1 | PathogenName) + (1 | 
+    Antibiotic) + (1 | DrugClass), family = binomial,nAGQ = 0, data = data)
+summary(bestMod)
+AIC(bestMod)
+
+ModNosocomial <- update(bestMod, ~ . - Nosocomial)
+DAICNosocomial = AIC(ModNosocomial) - AIC(bestMod)
+
+ModZoonosis <- update(bestMod, ~ . + Zoonosis)
+DAICZoonosis = AIC(ModZoonosis) - AIC(bestMod)
+
+ModHumanTr <- update(bestMod, ~ . - Humantransmission)
+DAICHumanTr = AIC(ModHumanTr) - AIC(bestMod)
+
+ModNatComp <- update(bestMod, ~ . + NaturallyCompetent)
+DAICNatComp = AIC(ModNatComp) - AIC(bestMod)
+
+ModTrType <- update(bestMod, ~ . - TransmissionType)
+DAICTrType = AIC(ModTrType) - AIC(bestMod)
+
+ModREDrug <- update(bestMod, ~ . + ResearchEffortAntibiotic)
+DAICREDrug = AIC(ModREDrug) - AIC(bestMod)
+
+ModREPath <- update(bestMod, ~ . + ResearchEffortPath)
+DAICREPath = AIC(ModREPath) - AIC(bestMod)
+
+ModDrugDt <- update(bestMod, ~ . + AntibioticDate)
+DAICDrugDt = AIC(ModDrugDt) - AIC(bestMod)
+
+ModCidal <- update(bestMod, ~ . + Bactericidal.Static)
+DAICCidal = AIC(ModCidal) - AIC(bestMod)
+
+ModEnvRes <- update(bestMod, ~ . + EnvrionmentalReservoir)
+DAICEnvRes = AIC(ModEnvRes) - AIC(bestMod)
+
+ModCommensal <- update(bestMod, ~ . + Commensal)
+DAICCommensal = AIC(ModCommensal) - AIC(bestMod)
+
+ModPathogenType <- update(bestMod, ~ . - Pathogentype)
+DAICPathType = AIC(ModPathogenType) - AIC(bestMod)
+
+ModDrugUseTotal<- update(bestMod, ~ . + DrugUseTotal)
+DAICDrugUseTotal = AIC(ModDrugUseTotal) - AIC(bestMod)
+
+ModConjugation<- update(bestMod, ~ . + Conjugation)
+DAICConjugation = AIC(ModConjugation) - AIC(bestMod)
+
+
+####Create dataframe with DAIC values#####
+
+df3 <- data.frame("Factors" = c("-TransmissionType","-Nosocomial","-Pathogentype","-Humantransmission","+DrugUseTotal",    "+ResearchEffortPath","+AntibioticDate", "+EnvrionmentalReservoir","+Commensal","+Conjugation","+Bactericidal.Static","+NaturallyCompetent", "+Zoonosis","+ResearchEffortAntibiotic"),
+                      "DeltaAIC"= c(DAICTrType, DAICNosocomial, DAICPathType, DAICHumanTr, DAICDrugUseTotal, DAICREPath,  DAICDrugDt, DAICEnvRes, DAICConjugation,DAICCommensal,  DAICCidal, DAICNatComp, DAICZoonosis,DAICREDrug ))
+df3
+df3$Factors <- factor(df3$Factors, levels = df3$Factors)
+
+write.csv(df3, "~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ARM_DAIC.csv")
+
+
+```
+```{r ARM plots}
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+library(dplyr)
+library(forcats)
+
+################**************************##################**********************################
+
+df3<- read.csv("ARM_df2.csv")
+df3$Factor <- factor(df3$Factor,levels =c("-TransmissionType","-Nosocomial","-PathogenType","-HumanTransmission","+DrugUseTotal",    "+ResearchEffortPath","+AntibioticDate", "+EnvrionmentalReservoir","+Commensal","+Conjugation","+Bactericidal.Static","+NaturallyCompetent", "+Zoonosis","+ResearchEffortAntibiotic"))
+df3
+plot4 <- ggplot(df3, aes(x = Factor, y = DAIC, main = "Deviation from Best Model")) + geom_point() +
+   ylim(0,10) +
+  curtstheme +geom_hline(yintercept = 2.0, linetype="dashed", size = 0.2, color = "grey") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+plot4
+
+################**************************##################**********************################
+
+df.FactorAICARM <- read.csv("ARM_df.FactorAIC.csv")
+df.FactorAICARM$Factor <- factor(df.FactorAICARM$Factor, levels = df.FactorAICARM$Factor)
+
+plot5 <- ggplot(df.FactorAICARM, aes(x=Factor, y=AICWeight)) + labs(y= "AIC Weights" ) + ylim(0,1) + geom_point() + geom_hline(yintercept = 0.50, linetype="dashed", size = 0.2, color = "grey") + 
+  curtstheme+
+  theme(axis.text.x = element_text(angle = 60, hjust = 1)) 
+
+#plot5
+
+################**************************##################**********************################
+
+library(cowplot)
+figure2 <- plot_grid(plot4, plot5, ncol = 2, align="h",labels = c('C', 'D'))
+title <- ggdraw() + 
+  draw_label(
+    "Algorithmic Review Method",
+    fontface = 'bold',
+    x = 0.35,
+    hjust = 0
+  )
+
+figureARM <- plot_grid(
+  title, figure2,
+  ncol = 1,
+  # rel_heights values control vertical title margins
+  rel_heights = c(0.1, 1)
+)
+
+```
+```{r Plot combined Figure 2}
+figure2 <- 
+  plot_grid(figureEOM, figureARM, nrow = 2, align="v")
+
+ggsave(filename = "6.3.2022_Figure4.pdf", plot = figure2, device = "pdf", width = 9, height = 10)
+```
+####### FIGURE 7 #######
+```{r plot EOM}
+##go to output folder and save dfwithDrugUse as df3.csv ## RENAME output file
+dfEOM <- read.csv("EOM_Exclude-a-factor.csv")
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+library(dplyr)
+library(forcats)
+
+dfEOM
+#df1$Missing.Factor <- factor(df1$Missing.Factor, levels = df1$Missing.Factor)
+dfEOM$Missing.Factor <- factor(dfEOM$Missing.Factor, levels = c("None", "Nosocomial","Zoonosis","TransmissionType","REPath","Commensal","Conjugation","DrugDate","Pathogentype",  "REDrug", "Bactericidal.Static","NaturallyCompetent", "DrugUseTotal","Humantransmission", "EnvrionmentalReservoir"))
+
+#df1$AIC.Nosocomial = (df1$AIC.Nosocomial[which(df1$Missing.Factor == "None")] - df1$AIC.Nosocomial)
+#df1
+
+figure3EOM <- 
+ggplot(dfEOM, aes(x = Missing.Factor)) + geom_point(aes(y = AIC.Nosocomial), color = 'blue')+ geom_point(aes(y = AIC.Zoonosis), color = 'green')+ geom_point(aes(y = AIC.TransmissionType), color = 'red') + geom_point(aes(y = AIC.REPath), color = 'lightblue') + geom_point(aes(y = AIC.Commensal), color = 'brown') + geom_point(aes(y = AIC.Conjugation),color = 'black') + geom_point(aes(y = AIC.PathogenType), color = 'dark green') + geom_point(aes(y = AIC.REDrug), color = 'yellow')+ geom_point(aes(y = AIC.DrugDate), color = 'grey')  + geom_point(aes(y = AIC.Humantransmission), shape = 4, color = 'black') + geom_point(aes(y = AIC.NaturallyCompetent), shape = 4,size = 3, color = 'orange') + geom_point(aes(y = AIC.Bactericidal.Static), shape = 4, color = 'purple') + geom_point(aes(y = AIC.EnvrionmentalReservoir), shape = 4, color = 'dark blue')  + geom_point(aes(y = AIC.DrugUseTotal), shape = 4, color = 'red') + geom_hline(yintercept = 0.50, linetype="dashed", size = 0.5, color = "lightgrey") + ylab('AIC Weights') + ggtitle("Expert Opinion Method")+curtstheme + theme(axis.text.x = element_text(angle = 60, hjust = 1), plot.title = element_text(size = 14))
+
+#ggsave(filename = "7.29.2021FactorExcluded.pdf", plot = figure3EOM, device = "pdf")
+```
+```{r plot ARM}
+##go to output folder and save dfwithDrugUse as df3.csv ## RENAME output file
+dfARM <- read.csv(" ARM_Exclude-a-factor.csv")
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+library(dplyr)
+library(forcats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 20, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+
+
+dfARM
+dfARM$Missing.Factor <- factor(dfARM$Missing.Factor, levels = dfARM$Missing.Factor)
+
+#dfARM$Missing.Factor <- factor(dfARM$Missing.Factor, levels = c("None", #"TransmissionType","Nosocomial","Pathogentype","Humantransmission","DrugUseTotal","REPath","AntibioticDate", #"EnvrionmentalReservoir","Commensal","Conjugation","Bactericidal.Static","NaturallyCompetent", "Zoonosis","REAntibiotic"))
+
+dfARM$Missing.Factor <- factor(dfARM$Missing.Factor,levels = c("None", "Nosocomial","Zoonosis","TransmissionType","REPath","Commensal","Conjugation","DrugDate","Pathogentype",  "REDrug", "Bactericidal.Static","NaturallyCompetent", "DrugUseTotal","Humantransmission", "EnvrionmentalReservoir"))
+#df1$AIC.Nosocomial = (df1$AIC.Nosocomial[which(df1$Missing.Factor == "None")] - df1$AIC.Nosocomial)
+#df1
+
+figure3ARM <- 
+ggplot(dfARM, aes(x = Missing.Factor)) + geom_point(aes(y = AIC.Nosocomial), color = 'blue')+ geom_point(aes(y = AIC.Zoonosis), shape = 4, color = 'green')+ geom_point(aes(y = AIC.TransmissionType), color = 'red') + geom_point(aes(y = AIC.REPath),shape = 4,  color = 'lightblue') + geom_point(aes(y = AIC.Commensal),shape = 4,  color = 'brown') + geom_point(aes(y = AIC.Conjugation),shape = 4, color = 'black') + geom_point(aes(y = AIC.PathogenType), color = 'dark green') + geom_point(aes(y = AIC.REDrug), shape = 4,  color = 'yellow')+ geom_point(aes(y = AIC.AntibioticDate),shape = 4,  color = 'grey')  + geom_point(aes(y = AIC.Humantransmission), color = 'black') + geom_point(aes(y = AIC.NaturallyCompetent), shape = 4,size =3, color = 'orange') + geom_point(aes(y = AIC.Bactericidal.Static), shape = 4, color = 'purple') + geom_point(aes(y = AIC.EnvrionmentalReservoir), shape = 4, color = 'dark blue')  + geom_point(aes(y = AIC.DrugUseTotal), shape = 4, color = 'red') + geom_hline(yintercept = 0.50, linetype="dashed", size = 0.5, color = "lightgrey") + ylab('AIC Weights') + ggtitle("Algorithmic Review Method")+ ylim (0,1.00) +curtstheme + theme(axis.text.x = element_text(angle = 60, hjust = 1), plot.title = element_text(size = 14))
+#ggsave(filename = "6.8.2021FactorExcludedARM.pdf", plot = plot1, device = "pdf")
+```
+```{r Figure 7 combined plot}
+library(cowplot)
+figure3 <- 
+  plot_grid(figure3EOM, figure3ARM, nrow = 1, align="h", labels = c("A.", "B."))
+
+ggsave(filename = "7.29.2021_Figure3.pdf", plot = figure3, device = "pdf", width = 15, height = 7.5)
+
+```
+####### FIGURE 8 #######
+```{r EOM Parameter Estimate Figure}
+rm(list=ls())
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+dataest<- read.csv("ParameterEstimates_modavg_ALL.csv")
+dataest$Factor <- as.character(dataest$Factor)
+dataest$Factor[6] <- paste("Bacteriostatic")
+dataest$Factor[10] <- paste("TransmissionTypeIndirect")
+dataest$Factor[12] <- paste("Drug/AntibioticDate")
+dataest$Factor[13] <- paste("ResearchEffortDrug/Antibiotic")
+
+#for (i in 1:16){
+#dataest$SD[i] <- dataest$SEM[i]*128
+#dataest$MeanNew[i] <- dataest$Mean[i]*dataest$SD[i]
+#dataest$LowerCINew[i] <- dataest$LowerCI[i]*dataest$SD[i]
+#dataest$UpperCINew[i] <- dataest$UpperCI[i]*dataest$SD[i]
+#}
+
+dataest
+
+library(forcats)
+#lock in Factor level order
+dataest$Factor <- factor(dataest$Factor,levels = c("Zoonosis", "TransmissionTypeIndirect","ResearchEffortPath","PathogentypeGramNegative","PathogentypeGramPositive","PathogentypeOther","Drug/AntibioticDate","Nosocomial","Commensal","Conjugation","ResearchEffortDrug/Antibiotic",  "Bacteriostatic","DrugUseTotal","NaturallyCompetent","Humantransmission","EnvrionmentalReservoir" ))
+dataest <- dataest[with(dataest, order(Factor)),]
+ERM<- dataest
+ERM
+
+
+#write.csv(ERM,"~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ParEstERM.csv" ) ##Added on 8/18/22 to send to Dave for Figure 6
+
+
+#dataest <- dataest %>% mutate(Factor = fct_reorder(Factor, Mean, na.rm = TRUE, .desc = TRUE))
+
+
+plot1 <- 
+  ggplot(dataest, aes(x = Factor, y = MeanNew))  + xlab("")+ ggtitle("Expert Opinion Method") +geom_point() +
+  geom_errorbar(aes(ymax = UpperCINew , ymin = LowerCINew))+
+  curtstheme +
+  theme(axis.text.x = element_blank(),
+        plot.title = element_text(hjust = -0.05))+
+  geom_hline(yintercept = 0, linetype="dashed", size = 0.5)  #+ ylim(-2,2)
+
+#plot0 <- ggplot(dataest, aes(x = Factor, y = MeanNew))+ ggtitle("Expert Opinion Method") +geom_point() +
+ # geom_errorbar(aes(ymax = UpperCINew , ymin = LowerCINew))+
+  #curtstheme +
+  #theme(axis.text.x = element_text(angle = 60, hjust = 1),
+   #     plot.title = element_text(hjust = -0.05))+
+  #geom_hline(yintercept = 0, linetype="dashed", size = 0.5)
+
+#ggsave(filename = "10.12.2021_EOM_ParEst.pdf", plot = plot0, device = "pdf", width = 7, height = 7)
+```
+```{r ARM Parameter Estimate Figure}
+
+DATAEST1<- read.csv("ARMParameterEstimates_ALL.csv")
+DATAEST1$Factor <- as.character(DATAEST1$Factor)
+DATAEST1$Factor
+DATAEST1$Factor[6] <- paste("Bacteriostatic")
+DATAEST1$Factor[10] <- paste("TransmissionTypeIndirect")
+DATAEST1$Factor[12] <- paste("Drug/AntibioticDate")
+DATAEST1$Factor[13] <- paste("ResearchEffortDrug/Antibiotic")
+library(forcats)
+
+#Calculating ODDS Ratio
+for (i in 1:16){
+
+DATAEST1$ORMean1[i] <- exp(DATAEST1$Mean[i])
+DATAEST1$ORLowerCI1[i] <- exp(DATAEST1$LowerCI[i])
+DATAEST1$ORUpperCI1[i] <- exp(DATAEST1$UpperCI[i])
+
+}
+
+
+DATAEST1
+
+
+DATAEST1$Factor <- factor(DATAEST1$Factor,levels = c("Zoonosis", "TransmissionTypeIndirect","ResearchEffortPath","PathogentypeGramNegative","PathogentypeGramPositive","PathogentypeOther","Drug/AntibioticDate","Nosocomial","Commensal","Conjugation","ResearchEffortDrug/Antibiotic",  "Bacteriostatic","DrugUseTotal","NaturallyCompetent","Humantransmission","EnvrionmentalReservoir" ))
+DATAEST1 <- DATAEST1[with(DATAEST1, order(Factor)),]
+
+#DATAEST1$ERMMean <- dataest$Mean
+#DATAEST1$ERMLowerCI <- dataest$LowerCI
+#DATAEST1$ERMUpperCI <- dataest$UpperCI
+DATAEST1   
+
+ParEstARM<- DATAEST1
+
+ParEstARM
+write.csv(ParEstARM,"~/Library/CloudStorage/OneDrive-ThePennsylvaniaStateUniversity/1. Penn State Folder/1.Kennedy Lab/Perspective_Opinion paper/Figures for paper/ParEstARM.csv" )
+
+require(scales)
+
+#plot2 <- 
+  ggplot(DATAEST1, aes(x = Factor, y = ORMean))  + ggtitle("Algorithmic Review Method") +geom_point() +
+  geom_errorbar(aes(ymax = ORUpperCI , ymin = ORLowerCI))+ scale_y_continuous(trans = log2_trans(),
+    breaks = trans_breaks("log2", function(x) 2^x),
+    labels = trans_format("log2", math_format(2^.x)))+
+  curtstheme + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(hjust = -0.05)) + 
+  geom_hline(yintercept = 1, linetype="dashed", size = 0.5) #+ ylim(-3,6)
+
+#### Transforming without the SD scale transformation
+  ggplot(DATAEST1, aes(x = ORMean1, y = Factor, color = "a"))  + ggtitle("Algorithmic Review Method") +geom_point() +
+  geom_errorbar(aes(xmax = ORUpperCI1 , xmin = ORLowerCI1))+ scale_x_continuous(trans = log2_trans(),
+    breaks = trans_breaks("log2", function(x) 2^x))+
+  curtstheme + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(hjust = -0.05)) + 
+  geom_vline(xintercept = 1, linetype="dashed", size = 0.5) #+ ylim(-3,6)
+  
+  
+```
+```{r Plot combined Figure 8}
+library(cowplot)
+figure8 <- 
+  plot_grid(plot1, plot2, nrow = 2, align="v",labels = c('A.', 'B.'))
+
+ggsave(filename = "10.11.2021_Figure8.pdf", plot = figure8, device = "pdf", width = 7, height = 14)
+```
+
+
+```{r August 2022 Parameter Estimate Figure}
+rm(list=ls())
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+dataest<- read.csv("ParameterEstimates_Both.csv")
+dataest$Factor <- as.character(dataest$Factor)
+dataest$Factor[6] <- paste("Bacteriostatic")
+dataest$Factor[10] <- paste("TransmissionTypeIndirect")
+dataest$Factor[12] <- paste("Drug/AntibioticDate")
+dataest$Factor[13] <- paste("ResearchEffortDrug/Antibiotic")
+
+dataest$Factor[22] <- paste("Bacteriostatic")
+dataest$Factor[26] <- paste("TransmissionTypeIndirect")
+dataest$Factor[28] <- paste("Drug/AntibioticDate")
+dataest$Factor[29] <- paste("ResearchEffortDrug/Antibiotic")
+
+
+dataest
+##Calculating Odds Ratio for ARM data
+for (i in 1:16){
+
+dataest$ORMean1[i] <- exp(dataest$Mean[i])
+dataest$ORLowerCI1[i] <- exp(dataest$LowerCI[i])
+dataest$ORUpperCI1[i] <- exp(dataest$UpperCI[i])
+
+}
+
+##PLaceholder for Odds Ratio columns for the ERM dataset
+for (i in 17:32){
+
+dataest$ORMean1[i] <- "N/A"
+dataest$ORLowerCI1[i] <- "N/A"
+dataest$ORUpperCI1[i] <- "N/A"
+
+}
+
+##Copying Odds ratios for ARM to estimate columns that will be plotted
+for (i in 1:16){
+
+dataest$Est[i] <- exp(dataest$Mean[i])
+dataest$LowerCI[i] <- exp(dataest$LowerCI[i])
+dataest$UpperCI1[i] <- exp(dataest$UpperCI[i])
+
+}
+
+#Copying parameter estimates for ERM data to the columns that will be plotted
+for (i in 17:32){
+
+dataest$Est[i] <- dataest$Mean[i]
+dataest$LowerCI[i] <- dataest$LowerCI[i] 
+dataest$UpperCI[i] <- dataest$UpperCI[i]
+
+}
+
+
+dataest
+str(dataest)
+
+
+
+
+library(forcats)
+#lock in Factor level order
+dataest$Factor <- factor(dataest$Factor,levels = c("Zoonosis", "TransmissionTypeIndirect","ResearchEffortPath","PathogentypeGramNegative","PathogentypeGramPositive","PathogentypeOther","Drug/AntibioticDate","Nosocomial","Commensal","Conjugation","ResearchEffortDrug/Antibiotic",  "Bacteriostatic","DrugUseTotal","NaturallyCompetent","Humantransmission","EnvrionmentalReservoir" ))
+
+
+#dataest$Factor <- factor(dataest$Factor,levels = c("EnvrionmentalReservoir","Humantransmission","NaturallyCompetent","DrugUseTotal","Bacteriostatic","ResearchEffortDrug/Antibiotic","Conjugation", "Commensal","Nosocomial", "Drug/AntibioticDate","PathogentypeOther","PathogentypeGramPositive","PathogentypeGramNegative","ResearchEffortPath","TransmissionTypeIndirect","Zoonosis"))
+
+dataest <- dataest[with(dataest, order(Factor)),]
+dataest
+
+
+
+
+
+#dataest <- dataest %>% mutate(Factor = fct_reorder(Factor, Mean, na.rm = TRUE, .desc = TRUE))
+require(scales)
+######Plotting both ERM and ARM data on same plot (from website: https://www.jscarlton.net/post/2017-04-05multipledotsggplot/)
+ggplot(dataest, aes(x = Est, y = Factor)) + 
+   geom_errorbar(aes(xmax = UpperCI , xmin = LowerCI))+ 
+  curtstheme + 
+  theme(axis.text.y = element_text(size = 10),
+        plot.title = element_text(hjust = -0.05)) + 
+  geom_vline(xintercept = 0, linetype="dashed", size = 0.5) +
+  facet_wrap(~Method, ncol = 2, scales = "free_x", shrink = TRUE)
+  
+
+
+
+  
+  range(dataest$ORLowerCI1)
+  dataest$Factor[dataest$ORUpperCI1 == ]
+```
+
+
+```{r August 12, 2022 Parameter Estimate Figure}
+rm(list=ls())
+
+library(ggplot2)
+library(ggthemes)
+library(EnvStats)
+
+curtstheme <- theme_classic() + theme(
+  axis.title.x = element_text(size=12,face="bold", vjust = 1), 
+  axis.title.y = element_text(size=12,face="bold", vjust = 1), 
+  axis.text.x = element_text(size=10), 
+  axis.text.y = element_text(size=12), 
+  plot.title = element_text(face = "bold", size = 14, hjust = 0.5),
+  plot.subtitle= element_text(size = 18, hjust = 0.5),
+  plot.caption = element_text(size = 12, hjust = 0.5),
+  axis.line = element_line(size = 1),
+  axis.ticks = element_line(size = 1),
+  axis.ticks.length = unit(0.25, "cm"))
+
+dataest<- read.csv("ParameterEstimates_modavg_ALL.csv")
+dataest$Factor <- as.character(dataest$Factor)
+dataest$Factor[6] <- paste("Bacteriostatic")
+dataest$Factor[10] <- paste("TransmissionTypeIndirect")
+dataest$Factor[12] <- paste("Drug/AntibioticDate")
+dataest$Factor[13] <- paste("ResearchEffortDrug/Antibiotic")
+
+DATAEST1<- read.csv("ARMParameterEstimates_ALL.csv")
+DATAEST1$Factor <- as.character(DATAEST1$Factor)
+DATAEST1$Factor
+DATAEST1$Factor[6] <- paste("Bacteriostatic")
+DATAEST1$Factor[10] <- paste("TransmissionTypeIndirect")
+DATAEST1$Factor[12] <- paste("Drug/AntibioticDate")
+DATAEST1$Factor[13] <- paste("ResearchEffortDrug/Antibiotic")
+library(forcats)
+
+#dataest <- dataest %>% mutate(Factor = fct_reorder(Factor, Mean, na.rm = TRUE, .desc = TRUE))
+for (i in 1:16){
+
+DATAEST1$ARMMean[i] <- exp(DATAEST1$Mean[i])
+DATAEST1$ARMLowerCI[i] <- exp(DATAEST1$LowerCI[i])
+DATAEST1$ARMUpperCI[i] <- exp(DATAEST1$UpperCI[i])
+
+}
+
+
+DATAEST1
+
+for (i in 1:16){
+
+DATAEST1$ERMMean[i] <- dataest$Mean[i]
+DATAEST1$ERMLowerCI[i] <- dataest$LowerCI[i]
+DATAEST1$ERMUpperCI[i] <- dataest$UpperCI[i]
+
+}
+
+
+library(forcats)
+#lock in factor level order
+DATAEST1$Factor <- factor(dataest$Factor,levels = c("EnvrionmentalReservoir","Humantransmission","NaturallyCompetent","DrugUseTotal","Bacteriostatic","ResearchEffortDrug/Antibiotic","Conjugation", "Commensal","Nosocomial", "Drug/AntibioticDate","PathogentypeOther","PathogentypeGramPositive","PathogentypeGramNegative","ResearchEffortPath","TransmissionTypeIndirect","Zoonosis"))
+
+DATAEST1 <- DATAEST1[with(DATAEST1, order(Factor)),]
+DATAEST1
+
+
+###Trying to plot them together!
+
+ ggplot(DATAEST1, aes(x = ARMMean, y = Factor))  + ggtitle("Parameter Estimation") +geom_point() +
+  geom_errorbar(aes(xmax = ARMUpperCI , xmin = ARMLowerCI))+ scale_x_continuous(trans = log2_trans(), breaks = trans_breaks("log2", function(x) 2^x))+
+  geom_point(aes(x = ERMMean, y= Factor, color = "ERM"))+ geom_errorbar(aes(xmax = ERMUpperCI , xmin = ERMLowerCI, color = "ERM"))+xlim (-2,6)+ scale_x_continuous("ARMMean", sec.axis = sec_axis(~ . /2, name = "ERMMean"))+
+  curtstheme + 
+  theme(axis.text.x = element_text(angle = 12, hjust = 1)) + 
+  geom_vline(xintercept = 1, linetype="dashed", size = 0.5) #+ ylim(-3,6)
+
+###Just ARM plot
+ ARMplot <- ggplot(DATAEST1, aes(x = ARMMean, y = Factor))  + ggtitle("ARM") + xlab("Odds Ratio")+geom_point() +
+  geom_errorbar(aes(xmax = ARMUpperCI , xmin = ARMLowerCI))+ scale_x_continuous(trans = log2_trans(), breaks = trans_breaks("log2", function(x) 2^x))+
+  curtstheme + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) + 
+  geom_vline(xintercept = 1, linetype="dashed", size = 0.5) #+ ylim(-3,6)
+ 
+ 
+ ERMplot <- 
+   
+  ggplot(DATAEST1, aes(x = ERMMean, y = Factor))  + xlab("Parameter Estimate") + ggtitle("ERM") + geom_point() +
+  geom_errorbar(aes(xmax =ERMUpperCI , xmin = ERMLowerCI))+ xlim(-1.5,1.5) +
+  curtstheme + 
+  theme(axis.text.x = element_text(angle = 60, hjust = 1),
+        plot.title = element_text(hjust = 0.5)) + 
+  geom_vline(xintercept = 0, linetype="dashed", size = 0.5)
+
+###grid and plot and save
+
+ggsave(filename = "8.12.2022_ARMEstimate.pdf", plot = ARMplot, device = "pdf", width = 10, height = 7)
+
+ggsave(filename = "8.12.2022_ERMEstimate.pdf", plot = ERMplot, device = "pdf", width = 10, height = 7)
+   
+```
+
+
+
+#### ADDITIONAL ANALYSES #########
+```{r Priority List WHO chi-square}
+rm(list=ls())
+data3 <- read.csv("Prioritylist.csv")
+
+data3$ResearchEffortPath = log10(data3$ResearchEffortPath)
+data3$ResearchEffortAntibiotic = log10(data3$ResearchEffortAntibiotic)
+data3$DrugUseTotal = log10(data3$DrugUseTotal)
+data3$Resistant = data3$Resistant + ceiling(0.01*(data3$Resistant+data3$NotResistant))
+data3$NotResistant = data3$NotResistant + ceiling(0.01*(data3$Resistant+data3$NotResistant))
+#add ceiling of 1% (resistant + not resistant)
+#data$ResearchEffortDrug = log10(data$ResearchEffortDrug)
+data3$ResistantPercent = (data3$Resistant/(data3$Resistant+data3$NotResistant))*100
+
+#head (data)
+str(data3)
+
+####### Unique pathogens #####
+
+nrow(data.frame(c(unique(data3[c("PathogenName")]))))
+
+#NOSOCOMIAL####
+length(c(unique(data3$PathogenName[data3$Nosocomial == '0'])))
+length(c(unique(data3$PathogenName[data3$Nosocomial == '1'])))
+#NosocomialXsq <- chisq.test(table(data3$PathogenName, data3$Nosocomial))
+
+#TRANSMISSION TYPE####
+length(c(unique(data3$PathogenName[data3$TransmissionType == '0'])))
+length(c(unique(data3$PathogenName[data3$TransmissionType == '1'])))
+#TransmissionXsq <- chisq.test(table(data3$PathogenName, data3$TransmissionType))
+
+length(c(unique(data3$PathogenName[data3$Zoonosis == '0'])))
+length(c(unique(data3$PathogenName[data3$Zoonosis == '1'])))
+#TransmissionXsq <- chisq.test(table(data3$PathogenName, data3$TransmissionType))
+
+length(c(unique(data3$PathogenName[data3$Humantransmission == '0'])))
+length(c(unique(data3$PathogenName[data3$Humantransmission == '1'])))
+#TransmissionXsq <- chisq.test(table(data3$PathogenName, data3$TransmissionType))
+
+length(c(unique(data3$PathogenName[data3$Commensal == '0'])))
+length(c(unique(data3$PathogenName[data3$TransmissionType == '1'])))
+#TransmissionXsq <- chisq.test(table(data3$PathogenName, data3$TransmissionType))
+
+PriorityList <- data.frame("Factor" = c(  "Nosocomial", "Zoonosis","NaturallyCompetent", "Conjugation","TransmissionType_Indirect", "EnvironmentalReservoir","Commensal","Humantransmission","GramNegative","GramPositive","Anaerobic", "Other"),  "Number" = c(
+length(c(unique(data3$PathogenName[data3$Nosocomial == '1']))),
+length(c(unique(data3$PathogenName[data3$Zoonosis == '1']))),
+length(c(unique(data3$PathogenName[data3$NaturallyCompetent == '1']))),
+length(c(unique(data3$PathogenName[data3$Conjugation == '1']))),
+length(c(unique(data3$PathogenName[data3$TransmissionType == '1']))),
+length(c(unique(data3$PathogenName[data3$EnvrionmentalReservoir == '1']))),
+length(c(unique(data3$PathogenName[data3$Commensal == '1']))),
+length(c(unique(data3$PathogenName[data3$Humantransmission == '1']))),
+length(c(unique(data3$PathogenName[data3$Pathogentype == 'Gramnegative']))),
+length(c(unique(data3$PathogenName[data3$Pathogentype == 'GramPositive']))),
+length(c(unique(data3$PathogenName[data3$Pathogentype == 'Anaerobic']))),
+length(c(unique(data3$PathogenName[data3$Pathogentype == 'Other'])))
+))
+
+PriorityList
+
+EOM_Indirect<- unique(data2$PathogenName[data2$TransmissionType == '1'])
+EOM_Indirect
+length(EOM_Indirect)
+
+
+ARM_Indirect<- unique(data$PathogenName[data$TransmissionType == '1'])
+ARM_Indirect
+length(ARM_Indirect)
+
+Indirect_df<- c("EOM"= EOM_Indirect, "ARM" = ARM_Indirect)
+
+ Indirect_df 
+  
+
+
+```
+
+
+
+####Correlation between resistance scores of EOM and AIC
+head(CombinedData)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
